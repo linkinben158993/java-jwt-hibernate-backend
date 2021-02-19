@@ -6,13 +6,11 @@ import java.util.Set;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
-@Entity
+@Entity(name = "roles")
 @Table(name = "roles", uniqueConstraints = { @UniqueConstraint(columnNames = "rId"),
 		@UniqueConstraint(columnNames = "rName") })
 public class Roles implements Serializable {
@@ -29,27 +27,27 @@ public class Roles implements Serializable {
 	@ManyToMany(mappedBy = "roles")
 	private Set<Users> users;
 
-	private String getrId() {
+	public String getrId() {
 		return rId;
 	}
 
-	private void setrId(String rId) {
+	public void setrId(String rId) {
 		this.rId = rId;
 	}
 
-	private String getrName() {
+	public String getrName() {
 		return rName;
 	}
 
-	private void setrName(String rName) {
+	public void setrName(String rName) {
 		this.rName = rName;
 	}
 
-	private Set<Users> getUsers() {
+	public Set<Users> getUsers() {
 		return users;
 	}
 
-	private void setUsers(Set<Users> users) {
+	public void setUsers(Set<Users> users) {
 		this.users = users;
 	}
 

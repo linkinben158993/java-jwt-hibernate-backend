@@ -6,6 +6,7 @@ import java.util.Set;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -14,7 +15,7 @@ import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 
-@Entity
+@Entity(name = "users")
 @Table(name = "users")
 public class Users implements Serializable {
 
@@ -37,42 +38,50 @@ public class Users implements Serializable {
 	@Column(length = 100)
 	private String password;
 
-	private String getuId() {
-		return uId;
-	}
-
-	@ManyToMany(cascade = CascadeType.ALL)
+	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
 	@JoinTable(name = "owned_roles", joinColumns = {
 			@JoinColumn(name = "uId", referencedColumnName = "uId") }, inverseJoinColumns = {
 					@JoinColumn(name = "rId", referencedColumnName = "rId") })
 	private Set<Roles> roles;
 
-	private void setuId(String uId) {
-		this.uId = uId;
+	public String getuId() {
+		return uId;
 	}
 
-	private String getEmail() {
+	public String getEmail() {
 		return email;
 	}
 
-	private void setEmail(String email) {
+	public void setEmail(String email) {
 		this.email = email;
 	}
 
-	private String getFullName() {
+	public String getFullName() {
 		return fullName;
 	}
 
-	private void setFullName(String fullName) {
+	public void setFullName(String fullName) {
 		this.fullName = fullName;
 	}
 
-	private String getPassword() {
+	public String getPassword() {
 		return password;
 	}
 
-	private void setPassword(String password) {
+	public void setPassword(String password) {
 		this.password = password;
+	}
+
+	public Set<Roles> getRoles() {
+		return roles;
+	}
+
+	public void setRoles(Set<Roles> roles) {
+		this.roles = roles;
+	}
+
+	public void setuId(String uId) {
+		this.uId = uId;
 	}
 
 	public Users() {

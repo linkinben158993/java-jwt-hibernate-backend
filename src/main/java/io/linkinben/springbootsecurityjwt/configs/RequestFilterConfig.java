@@ -15,17 +15,17 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetailsService;
+import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @Component
 public class RequestFilterConfig extends OncePerRequestFilter {
 
 	@Autowired
-	private CustomUserDetailsService customUserDtailsService;
+	private JWTUtils jwtUtils;
 
 	@Autowired
-	private JWTUtils jwtUtils;
+	private UserDetailsServiceImpl userDetailsServiceImpl;
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -46,7 +46,7 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 
 		// Check user details and token is expired?
 		if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-			UserDetails userDetails = this.customUserDtailsService.loadUserByUsername(username);
+			UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsername(username);
 			System.out.println("User details: " + userDetails.getUsername().toString());
 			System.out.println(userDetails.toString());
 			if (jwtUtils.validateToken(jwt, userDetails)) {
