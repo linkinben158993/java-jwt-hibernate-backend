@@ -1,4 +1,4 @@
-package io.linkinben.springbootsecurityjwt.config;
+package io.linkinben.springbootsecurityjwt.configs;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import io.linkinben.springbootsecurityjwt.dto.CustomUserDetailsService;
+import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetailsService;
 
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
@@ -38,7 +38,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		http.csrf().disable()
 		.authorizeRequests()
 		.antMatchers("/authenticate/*").permitAll()
-//		.antMatchers("/home/*").permitAll()
+		.antMatchers("/home/*").permitAll()
 		.antMatchers("/error/*").permitAll()
 		.anyRequest().authenticated()
 		.and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);

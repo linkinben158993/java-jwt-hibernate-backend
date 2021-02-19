@@ -1,4 +1,4 @@
-package io.linkinben.springbootsecurityjwt.dto;
+package io.linkinben.springbootsecurityjwt.dtos;
 
 import java.util.ArrayList;
 

@@ -1,4 +1,4 @@
-package io.linkinben.springbootsecurityjwt.controller;
+package io.linkinben.springbootsecurityjwt.controllers;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-import io.linkinben.springbootsecurityjwt.dto.AuthenticationRequest;
-import io.linkinben.springbootsecurityjwt.dto.AuthenticationResponse;
-import io.linkinben.springbootsecurityjwt.dto.CustomUserDetailsService;
+import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
+import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
+import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetailsService;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @Controller

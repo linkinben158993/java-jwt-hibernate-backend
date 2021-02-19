@@ -1,4 +1,4 @@
-package io.linkinben.springbootsecurityjwt.config;
+package io.linkinben.springbootsecurityjwt.configs;
 
 import java.io.IOException;
 
@@ -15,7 +15,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import io.linkinben.springbootsecurityjwt.dto.CustomUserDetailsService;
+import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetailsService;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @Component
