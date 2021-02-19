@@ -1,15 +1,24 @@
 package io.linkinben.springbootsecurityjwt.entities;
 
+import java.io.Serializable;
+import java.util.Set;
+
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "users")
-public class Users {
+public class Users implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	@Id
 	@Column
@@ -31,6 +40,12 @@ public class Users {
 	private String getuId() {
 		return uId;
 	}
+
+	@ManyToMany(cascade = CascadeType.ALL)
+	@JoinTable(name = "owned_roles", joinColumns = {
+			@JoinColumn(name = "uId", referencedColumnName = "uId") }, inverseJoinColumns = {
+					@JoinColumn(name = "rId", referencedColumnName = "rId") })
+	private Set<Roles> roles;
 
 	private void setuId(String uId) {
 		this.uId = uId;
@@ -61,9 +76,9 @@ public class Users {
 	}
 
 	public Users() {
-		
+
 	}
-	
+
 	public Users(String uId, @NotBlank @Email String email, @NotBlank String fullName, @NotBlank String password) {
 		this.uId = uId;
 		this.email = email;
