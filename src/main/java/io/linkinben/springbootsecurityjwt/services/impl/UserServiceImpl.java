@@ -17,10 +17,9 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 	@Autowired
 	protected UserRepository userRepository;
 
-	@Override
 	public void add(Users user) {
 		String id = UUID.randomUUID().toString();
-		user.setId(id);
+		user.setuId(id);
 		String hashed = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
 		user.setPassword(hashed);
 		userRepository.insert(user);

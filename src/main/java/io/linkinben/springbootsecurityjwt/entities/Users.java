@@ -14,7 +14,7 @@ import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity(name = "users")
 @Table(name = "users")
@@ -43,7 +43,7 @@ public class Users extends GenericEntities<String> {
 			@JoinColumn(name = "uId", referencedColumnName = "uId") }, inverseJoinColumns = {
 					@JoinColumn(name = "rId", referencedColumnName = "rId") })
 	// Infinite loop of many to many relationship
-	@JsonIgnore
+	@JsonIgnoreProperties("users")
 	private Set<Roles> roles;
 
 	public String getuId() {

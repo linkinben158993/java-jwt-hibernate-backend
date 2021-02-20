@@ -1,17 +1,22 @@
 package io.linkinben.springbootsecurityjwt.controllers;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
+import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.services.RoleService;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 
 @Controller
@@ -20,8 +25,11 @@ public class UserController {
 
 	@Autowired
 	private UserService userService;
+	
+	@Autowired
+	private RoleService roleService;
 
-	@GetMapping("")
+	@RequestMapping(value = "", method = RequestMethod.GET)
 	public ResponseEntity<?> findAllUsers() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -36,5 +44,20 @@ public class UserController {
 			response.put("data", "Bad request!");
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
+	}
+
+	@RequestMapping(value = "/register", method = RequestMethod.POST)
+	public ResponseEntity<?> register(@RequestBody Users user) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		Set<Roles> ownedRoles = new HashSet<Roles>();
+		Roles role = roleService.findById("2");
+		System.out.println(role.getrName());
+		ownedRoles.add(role);
+		user.setRoles(ownedRoles);
+		userService.add(user);
+		response.put("title", "Create new user.");
+		response.put("message", "New user create!");
+		response.put("data", user);
+		return new ResponseEntity<Object>(response, HttpStatus.OK);
 	}
 }
