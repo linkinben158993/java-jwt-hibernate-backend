@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -39,12 +40,26 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		http.csrf().disable().authorizeRequests()
 		.antMatchers("/authenticate/*").permitAll()
 		.antMatchers("/home/*").permitAll()
+		.antMatchers("/api/*").permitAll()
 		.antMatchers("/user/register").permitAll()
-		.antMatchers("/error/*").permitAll().anyRequest()
+		.antMatchers("/error/*").permitAll()
+		.antMatchers("/js/**", "/css/**", "/csrf").permitAll()
+		.antMatchers("/swagger-ui.html").permitAll().anyRequest()
 		.authenticated().and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 		http.addFilterBefore(requestFilterConfig, UsernamePasswordAuthenticationFilter.class);
 	}
 
+	private static final String[] AUTH_WHITELIST = {
+	        "/swagger-resources/**",
+	        "/swagger-ui.html",
+	        "/v2/api-docs",
+	        "/webjars/**",
+	};
+	@Override
+	public void configure(WebSecurity web) throws Exception {
+		web.ignoring().antMatchers(AUTH_WHITELIST);
+	}
+	
 	@Override
 	@Bean
 	public AuthenticationManager authenticationManagerBean() throws Exception {

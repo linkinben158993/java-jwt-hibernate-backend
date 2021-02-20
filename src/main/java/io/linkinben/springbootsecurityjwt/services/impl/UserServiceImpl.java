@@ -17,6 +17,7 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 	@Autowired
 	protected UserRepository userRepository;
 
+	@Override
 	public void add(Users user) {
 		String id = UUID.randomUUID().toString();
 		user.setuId(id);

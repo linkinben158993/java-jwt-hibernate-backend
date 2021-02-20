@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @Controller
 @RequestMapping("home")
@@ -22,7 +23,7 @@ public class HomeController {
 		this.welcomeString = welcomeMessage;
 	}
 
-	@RequestMapping("/helloWorld")
+	@RequestMapping(value = "/helloWorld", method = RequestMethod.GET)
 	public ResponseEntity<Object> Welcome() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {

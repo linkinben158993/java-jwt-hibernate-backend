@@ -49,15 +49,23 @@ public class UserController {
 	@RequestMapping(value = "/register", method = RequestMethod.POST)
 	public ResponseEntity<?> register(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
-		Set<Roles> ownedRoles = new HashSet<Roles>();
-		Roles role = roleService.findById("2");
-		System.out.println(role.getrName());
-		ownedRoles.add(role);
-		user.setRoles(ownedRoles);
-		userService.add(user);
-		response.put("title", "Create new user.");
-		response.put("message", "New user create!");
-		response.put("data", user);
-		return new ResponseEntity<Object>(response, HttpStatus.OK);
+		try {
+			Set<Roles> ownedRoles = new HashSet<Roles>();
+			Roles role = roleService.findById("2");
+			System.out.println(role.getrName());
+			ownedRoles.add(role);
+			user.setRoles(ownedRoles);
+			userService.add(user);
+			response.put("title", "Create new user.");
+			response.put("message", "New user create!");
+			response.put("data", user);
+			return new ResponseEntity<Object>(response, HttpStatus.OK);			
+		} catch (Exception e) {
+			response.put("title", "Request for a new account.");
+			response.put("message", "Something happened!");
+			response.put("data", "Bad request!");
+			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+		}
+
 	}
 }
