@@ -1,6 +1,5 @@
 package io.linkinben.springbootsecurityjwt.entities;
 
-import java.io.Serializable;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -15,11 +14,11 @@ import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity(name = "users")
 @Table(name = "users")
-public class Users implements Serializable {
-
-	private static final long serialVersionUID = 1L;
+public class Users extends GenericEntities<String> {
 
 	@Id
 	@Column
@@ -39,9 +38,12 @@ public class Users implements Serializable {
 	private String password;
 
 	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	// Many to many relationship joined table
 	@JoinTable(name = "owned_roles", joinColumns = {
 			@JoinColumn(name = "uId", referencedColumnName = "uId") }, inverseJoinColumns = {
 					@JoinColumn(name = "rId", referencedColumnName = "rId") })
+	// Infinite loop of many to many relationship
+	@JsonIgnore
 	private Set<Roles> roles;
 
 	public String getuId() {

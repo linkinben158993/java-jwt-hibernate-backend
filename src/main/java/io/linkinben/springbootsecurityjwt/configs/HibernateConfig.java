@@ -46,7 +46,8 @@ public class HibernateConfig {
 		properties.put(StringConstants.PROPS_KEY_DIALECT_PLATFORM,
 				StringConstants.PROPS_VALUE_DIALECT_PLATFORM_DATABASE);
 
-		properties.put(StringConstants.PROPS_KEY_AUTOCREATE_DATABASE, "create");
+		// "create" at first run and change to "update" later
+		properties.put(StringConstants.PROPS_KEY_AUTOCREATE_DATABASE, "update");
 		
 		properties.put(StringConstants.PROPS_KEY_DRIVERCLASSNAME, StringConstants.PROPS_VALUE_DRIVERCLASSNAME);
 		

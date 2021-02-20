@@ -31,9 +31,8 @@ public class AuthenticationController {
 
 	@RequestMapping(value = "/login", method = RequestMethod.POST)
 	public ResponseEntity<?> createAuthJWT(@RequestBody AuthenticationRequest authenticationRequest) {
+		Map<String, Object> response = new HashMap<String, Object>();
 		try {
-			System.out.println(authenticationRequest.getUsername());
-			System.out.println(authenticationRequest.getPassword());
 			Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
 					authenticationRequest.getUsername(), authenticationRequest.getPassword()));
 			SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -44,7 +43,6 @@ public class AuthenticationController {
 
 			final String jwt = jwtUtils.genToken(customUserDetails);
 
-			Map<String, Object> response = new HashMap<String, Object>();
 			response.put("title", "Good Credential!");
 			response.put("message", "Access Granted!");
 			response.put("data", jwt);
@@ -55,7 +53,9 @@ public class AuthenticationController {
 		} catch (Exception e) {
 			System.out.println("Not Okay");
 			System.out.println(e);
-			return new ResponseEntity<Object>("User Credential Incorrect!", HttpStatus.BAD_REQUEST);
+			response.put("title", "Bad Credential!");
+			response.put("message", "Access Denied!");
+			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
 	}
 }

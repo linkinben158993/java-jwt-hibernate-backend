@@ -2,10 +2,12 @@ package io.linkinben.springbootsecurityjwt.repositories.impl;
 
 import javax.transaction.Transactional;
 
+import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
 
+import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.repositories.UserRepository;
 
@@ -19,10 +21,21 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
-	public int updatePassword(String user) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int updatePassword(ChangePasswordDTO changePasswordDTO) {
+		Session session = sessionFactory.getCurrentSession();
+		String hql = "UPDATE users SET " + "password = :password, " + "WHERE email = :email";
+		try {
+			Query query = session.createQuery(hql);
+			query.setParameter("password", changePasswordDTO.getPassword());
+			query.setParameter("email", changePasswordDTO.getEmail());
+
+			return query.executeUpdate();
+		} catch (HibernateException e) {
+			e.printStackTrace();
+			return -1;
+		}
 	}
 
 	@Override

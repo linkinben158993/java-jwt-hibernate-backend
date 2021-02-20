@@ -1,10 +1,10 @@
 package io.linkinben.springbootsecurityjwt.entities;
 
-import java.io.Serializable;
 import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.ManyToMany;
 import javax.persistence.Table;
@@ -13,9 +13,7 @@ import javax.persistence.UniqueConstraint;
 @Entity(name = "roles")
 @Table(name = "roles", uniqueConstraints = { @UniqueConstraint(columnNames = "rId"),
 		@UniqueConstraint(columnNames = "rName") })
-public class Roles implements Serializable {
-
-	private static final long serialVersionUID = 1L;
+public class Roles extends GenericEntities<String> {
 
 	@Id
 	@Column(name = "rId")
@@ -24,7 +22,7 @@ public class Roles implements Serializable {
 	@Column(name = "rName")
 	private String rName;
 
-	@ManyToMany(mappedBy = "roles")
+	@ManyToMany(mappedBy = "roles", fetch = FetchType.EAGER)
 	private Set<Users> users;
 
 	public String getrId() {

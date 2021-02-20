@@ -52,7 +52,7 @@ public class JWTUtils {
 	private String initToken(Map<String, Object> claims, String subject) {
 		return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
 				// Expire of 10 hours: 1000 * 60 * 60 * 10 Test 1 minutes: 1000 * 60
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60)) // Currently set for one minute
                 .signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
 	}
 	
