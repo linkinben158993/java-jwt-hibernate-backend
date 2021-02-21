@@ -35,6 +35,11 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 	public Users findById(String id) {
 		return userRepository.findById(id);
 	}
+	
+	@Override
+	public Users findByEmail(String email) {
+		return userRepository.findByEmail(email);
+	}
 
 	@Override
 	public void edit(Users user) {
@@ -43,6 +48,8 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 
 	@Override
 	public int editPassword(ChangePasswordDTO changePasswordDTO) {
+		String hashed = BCrypt.hashpw(changePasswordDTO.getPassword(), BCrypt.gensalt(12));
+		changePasswordDTO.setPassword(hashed);
 		return userRepository.updatePassword(changePasswordDTO);
 	}
 

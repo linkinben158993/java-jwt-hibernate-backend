@@ -14,6 +14,7 @@ import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity(name = "users")
@@ -35,6 +36,7 @@ public class Users extends GenericEntities<String> {
 
 	@NotBlank
 	@Column(length = 100)
+	@JsonIgnore
 	private String password;
 
 	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

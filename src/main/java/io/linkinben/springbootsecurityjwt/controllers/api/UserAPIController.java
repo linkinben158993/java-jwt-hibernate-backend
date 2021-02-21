@@ -1,4 +1,4 @@
-package io.linkinben.springbootsecurityjwt.controllers;
+package io.linkinben.springbootsecurityjwt.controllers.api;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,18 +14,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
 import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 
 @Controller
-@RequestMapping("user")
-public class UserController {
+@RequestMapping("api/user")
+public class UserAPIController {
 
 	@Autowired
 	private UserService userService;
-	
+
 	@Autowired
 	private RoleService roleService;
 
@@ -59,13 +60,30 @@ public class UserController {
 			response.put("title", "Create new user.");
 			response.put("message", "New user create!");
 			response.put("data", user);
-			return new ResponseEntity<Object>(response, HttpStatus.OK);			
+			return new ResponseEntity<Object>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");
 			response.put("message", "Something happened!");
 			response.put("data", "Bad request!");
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
+	}
 
+	@RequestMapping(value = "/change-password", method = RequestMethod.POST)
+	public ResponseEntity<?> changePassword(@RequestBody ChangePasswordDTO user) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			System.out.println(user.getEmail());
+			userService.editPassword(user);
+			response.put("title", "Change password for: " + user.getEmail());
+			response.put("message", "Password changed!");
+			response.put("data", user);
+			return new ResponseEntity<Object>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			response.put("title", "Request change password for: " + user.getEmail());
+			response.put("message", "Something happened!");
+			response.put("data", "Bad request!");
+			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+		}
 	}
 }

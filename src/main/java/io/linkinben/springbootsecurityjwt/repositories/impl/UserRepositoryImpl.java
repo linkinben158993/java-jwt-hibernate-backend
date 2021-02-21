@@ -25,7 +25,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 	@Override
 	public int updatePassword(ChangePasswordDTO changePasswordDTO) {
 		Session session = sessionFactory.getCurrentSession();
-		String hql = "UPDATE users SET " + "password = :password, " + "WHERE email = :email";
+		String hql = "UPDATE users SET " + "password = :password " + "WHERE email = :email";
 		try {
 			Query query = session.createQuery(hql);
 			query.setParameter("password", changePasswordDTO.getPassword());

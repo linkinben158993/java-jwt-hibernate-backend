@@ -47,7 +47,6 @@ public class AuthenticationController {
 			response.put("message", "Access Granted!");
 			response.put("data", jwt);
 			AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
-			System.out.println("Okay Motherfucker!");
 			return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 
 		} catch (Exception e) {

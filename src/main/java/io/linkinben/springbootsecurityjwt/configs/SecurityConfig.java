@@ -38,17 +38,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http.csrf().disable().authorizeRequests()
-		.antMatchers("/authenticate/*").permitAll()
+		// Public end-points and apis
 		.antMatchers("/home/*").permitAll()
-		.antMatchers("/api/*").permitAll()
-		.antMatchers("/user/register").permitAll()
+		.antMatchers("/authenticate/*").permitAll()
 		.antMatchers("/error/*").permitAll()
+		.antMatchers("/api/user/register").permitAll()
+		// Restricted apis
+		.antMatchers("/api/user").hasRole("ADMIN")
+		// Swagger resources and end-points
 		.antMatchers("/js/**", "/css/**", "/csrf").permitAll()
 		.antMatchers("/swagger-ui.html").permitAll().anyRequest()
 		.authenticated().and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 		http.addFilterBefore(requestFilterConfig, UsernamePasswordAuthenticationFilter.class);
 	}
 
+	// Config Whitelist url for swagger
 	private static final String[] AUTH_WHITELIST = {
 	        "/swagger-resources/**",
 	        "/swagger-ui.html",
