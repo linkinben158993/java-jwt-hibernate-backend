@@ -22,7 +22,10 @@ public class WebMVCConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
-		registry.addMapping("**/swagger-ui.html/**").allowedMethods("GET", "POST", "DELETE", "PATCH");
+		// Local debugging
+		registry.addMapping("/**").allowedMethods("HEAD", "GET", "PUT", "POST", "DELETE", "PATCH")
+				.allowedOrigins("http://localhost:4200").allowedHeaders("*").allowedMethods("*").allowCredentials(true);
+		registry.addMapping("**/swagger-ui.html/**").allowedMethods("HEAD", "GET", "PUT", "POST", "DELETE", "PATCH");
 		registry.addMapping("/api/**").allowedMethods("HEAD", "GET", "PUT", "POST", "DELETE", "PATCH");
 	}
 }
