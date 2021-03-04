@@ -38,14 +38,16 @@ public class AuthenticationController {
 			SecurityContextHolder.getContext().setAuthentication(authentication);
 
 			CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-			System.out.println(customUserDetails.getuId());
-			System.out.println(customUserDetails.getUsername());
 
 			final String jwt = jwtUtils.genToken(customUserDetails);
-
+			Map<String, Object> userInfo = new HashMap<String, Object>();
+			userInfo.put("uId", customUserDetails.getuId());
+			userInfo.put("uName", customUserDetails.getUsername());
+			userInfo.put("accessToken", jwt);
+			
 			response.put("title", "Good Credential!");
 			response.put("message", "Access Granted!");
-			response.put("data", jwt);
+			response.put("data", userInfo);
 			AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
 			return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 
