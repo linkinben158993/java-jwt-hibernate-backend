@@ -52,14 +52,16 @@ public class UserAPIController {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			Set<Roles> ownedRoles = new HashSet<Roles>();
-			Roles role = roleService.findById("2");
-			System.out.println(role.getrName());
+			Roles role = roleService.findById("1");
 			ownedRoles.add(role);
 			user.setRoles(ownedRoles);
 			userService.add(user);
+			System.out.println(user.getEmail());
+			System.out.println(user.getFullName());
+			System.out.println(user.getPassword());
 			response.put("title", "Create new user.");
 			response.put("message", "New user create!");
-			response.put("data", user);
+			response.put("data", user.getEmail());
 			return new ResponseEntity<Object>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");

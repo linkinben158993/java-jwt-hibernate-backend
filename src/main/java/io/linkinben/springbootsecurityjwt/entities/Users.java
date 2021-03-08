@@ -36,7 +36,6 @@ public class Users extends GenericEntities<String> {
 
 	@NotBlank
 	@Column(length = 100)
-	@JsonIgnore
 	private String password;
 
 	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

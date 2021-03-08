@@ -3,6 +3,7 @@ package io.linkinben.springbootsecurityjwt;
 public class StringConstants {
 	// Hibernate Config
 	public static String DATA_SOURCE_DRIVER_CLASS_NAME = "com.mysql.cj.jdbc.Driver";
+	// "jdbc:mysql://localhost:3306/jwt_db?createDatabaseIfNotExist=true&useSSL=true" for local usage
 	public static String DATA_SOURCE_URL = "jdbc:mysql://sql6.freemysqlhosting.net:3306/sql6397487?createDatabaseIfNotExist=true&useSSL=true";
 	public static String DATA_SOURCE_USER_NAME = "sql6397487";
 	public static String DATA_SOURCE_PASSWORD = "pIaQup6sIc";

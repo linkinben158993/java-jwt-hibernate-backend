@@ -19,11 +19,16 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 
 	@Override
 	public void add(Users user) {
-		String id = UUID.randomUUID().toString();
-		user.setuId(id);
-		String hashed = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
-		user.setPassword(hashed);
-		userRepository.insert(user);
+		try {
+			String id = UUID.randomUUID().toString();
+			user.setuId(id);
+			String hashed = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
+			user.setPassword(hashed);
+			userRepository.insert(user);			
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+
 	}
 
 	@Override
