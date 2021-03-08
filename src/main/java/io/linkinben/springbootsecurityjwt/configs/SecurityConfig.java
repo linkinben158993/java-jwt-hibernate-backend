@@ -52,6 +52,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.permitAll().antMatchers("/api/user/register").permitAll()
 				// Restricted apis
 				.antMatchers("/api/user").hasRole("ADMIN")
+				// Only admin can add another role
+				.antMatchers("/api/role/add").hasRole("ADMIN")
 				// Swagger resources and end-points
 				.antMatchers("/js/**", "/css/**", "/csrf").permitAll().antMatchers("/swagger-ui.html").permitAll()
 				.anyRequest().authenticated().and().sessionManagement()

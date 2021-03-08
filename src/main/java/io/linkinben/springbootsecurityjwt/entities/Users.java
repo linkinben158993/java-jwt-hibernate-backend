@@ -13,8 +13,8 @@ import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity(name = "users")
@@ -45,6 +45,7 @@ public class Users extends GenericEntities<String> {
 					@JoinColumn(name = "rId", referencedColumnName = "rId") })
 	// Infinite loop of many to many relationship
 	@JsonIgnoreProperties("users")
+	@NotEmpty
 	private Set<Roles> roles;
 
 	public String getuId() {

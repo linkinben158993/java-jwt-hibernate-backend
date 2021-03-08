@@ -52,7 +52,9 @@ public class UserAPIController {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			Set<Roles> ownedRoles = new HashSet<Roles>();
-			Roles role = roleService.findById("1");
+			Roles role = roleService.findByRoleName("ROLE_USER");
+			System.out.println(role.getrId());
+			System.out.println(role.getrName());
 			ownedRoles.add(role);
 			user.setRoles(ownedRoles);
 			userService.add(user);
@@ -60,7 +62,7 @@ public class UserAPIController {
 			System.out.println(user.getFullName());
 			System.out.println(user.getPassword());
 			response.put("title", "Create new user.");
-			response.put("message", "New user create!");
+			response.put("message", "New user created!");
 			response.put("data", user.getEmail());
 			return new ResponseEntity<Object>(response, HttpStatus.OK);
 		} catch (Exception e) {

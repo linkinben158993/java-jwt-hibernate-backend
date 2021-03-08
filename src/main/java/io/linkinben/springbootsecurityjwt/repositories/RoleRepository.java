@@ -4,4 +4,5 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 
 public interface RoleRepository extends GenericRepository<Roles, String>{
 	void update(Roles role);
+	Roles findByRoleName(String roleName);
 }

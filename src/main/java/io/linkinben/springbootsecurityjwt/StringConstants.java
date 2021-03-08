@@ -3,7 +3,12 @@ package io.linkinben.springbootsecurityjwt;
 public class StringConstants {
 	// Hibernate Config
 	public static String DATA_SOURCE_DRIVER_CLASS_NAME = "com.mysql.cj.jdbc.Driver";
-	// "jdbc:mysql://localhost:3306/jwt_db?createDatabaseIfNotExist=true&useSSL=true" for local usage
+	// Local usage
+//	public static String DATA_SOURCE_URL = "jdbc:mysql://localhost:3306/jwt_db?createDatabaseIfNotExist=true&useSSL=true";
+//	public static String DATA_SOURCE_USER_NAME = "root";
+//	public static String DATA_SOURCE_PASSWORD = "Thienanvip@321";
+
+	// Production
 	public static String DATA_SOURCE_URL = "jdbc:mysql://sql6.freemysqlhosting.net:3306/sql6397487?createDatabaseIfNotExist=true&useSSL=true";
 	public static String DATA_SOURCE_USER_NAME = "sql6397487";
 	public static String DATA_SOURCE_PASSWORD = "pIaQup6sIc";
@@ -15,7 +20,7 @@ public class StringConstants {
 	public static String PROPS_KEY_DIALECT = "spring.jpa.properties.hibernate.dialect";
 	public static String PROPS_KEY_SHOW_SQL = "hibernate.show_sql";
 	public static String PROPS_KEY_FORMAT = "hibernate.formate_sql";
-	// spring.jpa.hibernate.ddl-auto Do more research 
+	// spring.jpa.hibernate.ddl-auto Do more research
 	public static String PROPS_KEY_AUTOCREATE_DATABASE = "hibernate.hbm2ddl.auto";
 	public static String PROPS_KEY_DRIVERCLASSNAME = "spring.datasource.driverClassName";
 	// Dialect của MySQL

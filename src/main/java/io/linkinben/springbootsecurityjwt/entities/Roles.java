@@ -19,7 +19,7 @@ public class Roles extends GenericEntities<String> {
 	@Column(name = "rId")
 	private String rId;
 
-	@Column(name = "rName")
+	@Column(name = "rName", unique = true)
 	private String rName;
 
 	@ManyToMany(mappedBy = "roles", fetch = FetchType.EAGER)

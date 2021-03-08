@@ -18,7 +18,7 @@ import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 public class JWTUtils {
 	private String SECRET_KEY = "AnJWT";
 	// Expire of 10 hours: 10 * 1000 * 60 * 60 Test 1 minutes: 1000 * 60
-	private int EXPIRATION = 1000 * 5; // Currently set for 5 seconds
+	private int EXPIRATION = 10 * 1000 * 60 * 60; // Currently set for 10 hours
 	
 	
 	// Expire of 7 * 24 hours: 7 * 24 * 1000 * 60 * 60 Test 1 minutes: 1000 * 60
