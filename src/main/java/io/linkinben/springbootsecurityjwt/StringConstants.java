@@ -3,9 +3,9 @@ package io.linkinben.springbootsecurityjwt;
 public class StringConstants {
 	// Hibernate Config
 	public static String DATA_SOURCE_DRIVER_CLASS_NAME = "com.mysql.cj.jdbc.Driver";
-	public static String DATA_SOURCE_URL = "jdbc:mysql://localhost:3306/JWT_Db?createDatabaseIfNotExist=true&useSSL=true";
-	public static String DATA_SOURCE_USER_NAME = "root";
-	public static String DATA_SOURCE_PASSWORD = "Thienanvip@321";
+	public static String DATA_SOURCE_URL = "jdbc:mysql://sql6.freemysqlhosting.net:3306/sql6397487?createDatabaseIfNotExist=true&useSSL=true";
+	public static String DATA_SOURCE_USER_NAME = "sql6397487";
+	public static String DATA_SOURCE_PASSWORD = "pIaQup6sIc";
 
 	// Session Factory
 	// Chỉ ra gói để quét
