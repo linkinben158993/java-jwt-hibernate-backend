@@ -29,6 +29,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 		if (user == null)
 			throw new BadCredentialsException("Given Credential Not Found");
 
+		return givenUserDetails(user);
+	}
+	
+	public UserDetails loadUserByUserId(String uId) {
+		Users user = userRepository.findById(uId);
+		if(user ==null) {
+			throw new BadCredentialsException("Given Credential Not Found");
+		}
+		
+		return givenUserDetails(user);
+	}
+	
+	private UserDetails givenUserDetails(Users user) {
 		Set<GrantedAuthority> grantedAuthorities = new HashSet<GrantedAuthority>();
 
 		for (Roles item : user.getRoles()) {

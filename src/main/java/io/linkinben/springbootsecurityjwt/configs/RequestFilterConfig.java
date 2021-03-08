@@ -39,43 +39,60 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 			throws ServletException, IOException {
 
 		final String authorizationHeader = request.getHeader("access_token");
+		final String isRefreshToken = request.getHeader("refresh_token");
 
 		String username = null;
-		String jwt = null;
 
 		try {
 			// Extract token with correct header and token is expired?
 			if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-				jwt = authorizationHeader.substring(7);
-				username = jwtUtils.extractUsername(jwt);
-				System.out.println("JWT: " + jwt);
-				System.out.println("Username: " + username);
+				username = jwtUtils.extractSubject(authorizationHeader);
+				System.out.println("Subject: " + username);
 			}
 
+
+			// Check user details
+			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsername(username);
+				System.out.println("User details: " + userDetails.getUsername().toString());
+				System.out.println(userDetails.toString());
+				if (jwtUtils.validateToken(authorizationHeader, userDetails)) {
+					UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+							userDetails, null, userDetails.getAuthorities());
+					usernamePasswordAuthenticationToken
+							.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+					SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+				}
+			}
+
+			filterChain.doFilter(request, response);
+			
 		} catch (ExpiredJwtException e) {
 			// If refresh token is in request
-			String isRefreshToken = request.getHeader("refresh_token");
-			String requestURL = request.getRequestURI();
-			System.out.println("Token expired do something!");
+			System.out.println("Access Token expired do something!");
+			String uId = null;
+			// Todo: Do something with refresh token if appended in request headers!
+			if (authorizationHeader != null && isRefreshToken.startsWith("Authorization ")) {
 
-			// Todo: Do something with refresh token if appened in request headers!
-			resolver.resolveException(request, response, null, e);
-		}
-
-		// Check user details
-		if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-			UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsername(username);
-			System.out.println("User details: " + userDetails.getUsername().toString());
-			System.out.println(userDetails.toString());
-			if (jwtUtils.validateToken(jwt, userDetails)) {
-				UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-						userDetails, null, userDetails.getAuthorities());
-				usernamePasswordAuthenticationToken
-						.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-				SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+				try {
+					uId = jwtUtils.extractSubject(isRefreshToken);
+					System.out.println("Subject: " + uId);					
+					authorizeRefreshToken(e, request, uId);
+					filterChain.doFilter(request, response);
+				} catch (ExpiredJwtException e1) {
+					// TODO: Force login in web client if refresh token expires as well!
+					resolver.resolveException(request, response, null, e1);
+				}
 			}
 		}
+	}
 
-		filterChain.doFilter(request, response);
+	private void authorizeRefreshToken(ExpiredJwtException ex, HttpServletRequest request, String subject) {
+		UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUserId(subject);
+		UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+				userDetails, null, userDetails.getAuthorities());
+		usernamePasswordAuthenticationToken
+				.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+		SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
 	}
 }

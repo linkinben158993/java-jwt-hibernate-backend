@@ -40,11 +40,15 @@ public class AuthenticationController {
 			CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
 
 			final String jwt = jwtUtils.genToken(customUserDetails);
+			final String jwt_refresh = jwtUtils.genRefreshToken(customUserDetails);
 			Map<String, Object> userInfo = new HashMap<String, Object>();
-			userInfo.put("uId", customUserDetails.getuId());
-			userInfo.put("uName", customUserDetails.getUsername());
-			userInfo.put("accessToken", jwt);
 			
+			// Unnecessary if cast refresh token
+			// userInfo.put("uId", customUserDetails.getuId());
+			// userInfo.put("uName", customUserDetails.getUsername());
+			userInfo.put("accessToken", jwt);
+			userInfo.put("refreshToken", jwt_refresh);
+
 			response.put("title", "Good Credential!");
 			response.put("message", "Access Granted!");
 			response.put("data", userInfo);
@@ -58,5 +62,15 @@ public class AuthenticationController {
 			response.put("message", "Access Denied!");
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
+	}
+
+	@RequestMapping(value = "/refresh_token", method = RequestMethod.GET)
+	public ResponseEntity<?> refreshToken(@RequestBody AuthenticationRequest authenticationRequest) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		response.put("title", "Good Credential!");
+		response.put("message", "Access Granted!");
+		response.put("data", "Motherfucker!");
+		AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
+		return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 	}
 }

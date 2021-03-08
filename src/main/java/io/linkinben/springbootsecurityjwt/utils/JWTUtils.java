@@ -12,15 +12,20 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 
 @Service
 public class JWTUtils {
 	private String SECRET_KEY = "AnJWT";
-	// Expire of 10 hours: 1000 * 60 * 60 * 10 Test 1 minutes: 1000 * 60
-	private int EXPIRATION = 1000 * 60; // Currently set for 1 minute
+	// Expire of 10 hours: 10 * 1000 * 60 * 60 Test 1 minutes: 1000 * 60
+	private int EXPIRATION = 1000 * 5; // Currently set for 5 seconds
+	
+	
+	// Expire of 7 * 24 hours: 7 * 24 * 1000 * 60 * 60 Test 1 minutes: 1000 * 60
+	private int EXPIRATION_REFRESH =  7 * 24 * 1000 * 60 * 60; // Currently set for 7 days
 
 	// Extract username from jwt token
-	public String extractUsername(String token) {
+	public String extractSubject(String token) {
 		return extractClaim(token, Claims::getSubject);
 	}
 
@@ -37,11 +42,30 @@ public class JWTUtils {
 
 	// Extract all claims from jwt token this should already check token expired!
 	private Claims extractAllClaims(String token) {
-		try {
-			return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
-		} catch (ExpiredJwtException e) {
-			throw e;
+		String jwt = null;
+		String jwt_refresh = null;
+		
+		if(token.startsWith("Bearer ")) {
+			jwt = token.substring(7);
+			try {
+				return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(jwt).getBody();
+			} catch (ExpiredJwtException e) {		
+				throw new ExpiredJwtException(e.getHeader(), e.getClaims(), "Access Token Expired!", null);
+			}
+
 		}
+		
+		if(token.startsWith("Authorization ")) {
+			jwt_refresh = token.substring(14);
+			
+			try {
+				return Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(jwt_refresh).getBody();
+			} catch (ExpiredJwtException e) {		
+				throw new ExpiredJwtException(e.getHeader(), e.getClaims(), "Refresh Token Expired!", null);
+			}
+		}
+
+		return null;
 	}
 
 	// Check if token expired unnecessary
@@ -63,14 +87,22 @@ public class JWTUtils {
 				.signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
 	}
 
-	public String genRefreshToken(Map<String, Object> claims, String subject) {
-		return Jwts.builder().setClaims(claims).setSubject(subject)
-				.setIssuedAt(new Date(System.currentTimeMillis() + EXPIRATION))
-				.signWith(SignatureAlgorithm.HS512, SECRET_KEY).compact();
+	public String genRefreshToken(UserDetails userDetails) {
+		Map<String, Object> claims = new HashMap<>();
+		CustomUserDetails refreshTokenDetail = (CustomUserDetails) userDetails;
+		return initRefreshToken(claims,  refreshTokenDetail.getuId());
+	}
+	
+	// Initialized refresh token
+	private String initRefreshToken(Map<String, Object> claims, String subject) {
+		return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
+
+				.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
+				.signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
 	}
 
 	public Boolean validateToken(String token, UserDetails userDetails) {
-		final String username = extractUsername(token);
+		final String username = extractSubject(token);
 		// return (username.equals(userDetails.getUsername()) &&
 		// !tokenIsExpired(token));
 		return username.equals(userDetails.getUsername());
