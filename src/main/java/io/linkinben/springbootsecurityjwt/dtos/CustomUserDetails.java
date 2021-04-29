@@ -12,6 +12,8 @@ public class CustomUserDetails extends User implements UserDetails {
 
 	private String uId;
 
+	private String fullName;
+
 	public String getuId() {
 		return uId;
 	}
@@ -20,9 +22,21 @@ public class CustomUserDetails extends User implements UserDetails {
 		this.uId = uId;
 	}
 
+	public String getFullName() {
+		return fullName;
+	}
+
+	public void setFullName(String fullName) {
+		this.fullName = fullName;
+	}
+
 	public CustomUserDetails(String uId, String email, String password,
 			Collection<? extends GrantedAuthority> authorities) {
 		super(email, password, authorities);
 		this.uId = uId;
 	}
+	
+	// TODO: Set more custom details lessen database querying below
+
+
 }
