@@ -32,6 +32,7 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -71,9 +72,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		http.cors();
 		http.csrf().disable().authorizeRequests()
 				// Public end-points and apis
-				.antMatchers("/home/*").permitAll().antMatchers("/authenticate/*").permitAll()
-				.antMatchers("/oauth/*").permitAll()
-				.antMatchers("/error/*").permitAll().antMatchers("/api/user/register").permitAll()
+				.antMatchers("/home/*").permitAll().antMatchers("/authenticate/*").permitAll().antMatchers("/oauth/*")
+				.permitAll().antMatchers("/error/*").permitAll().antMatchers("/api/user/register").permitAll()
 				// Restricted apis
 				.antMatchers("/api/user").hasRole("ADMIN")
 				// Only admin can add another role
@@ -82,7 +82,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/js/**", "/css/**", "/csrf").permitAll().antMatchers("/swagger-ui.html").permitAll()
 				.anyRequest().authenticated().and().sessionManagement()
 				.sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().oauth2Login()
-				.successHandler(this.successHandler()).failureHandler(this.failureHandler());
+				.defaultSuccessUrl("/oauth/register-google/success").successHandler(this.successHandler())
+				.failureHandler(this.failureHandler());
 		http.addFilterBefore(requestFilterConfig, UsernamePasswordAuthenticationFilter.class);
 	}
 
@@ -109,15 +110,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 			@Override
 			public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 					Authentication authentication) throws IOException, ServletException {
-				System.out.println("Success");
-
 				response.setStatus(HttpStatus.OK.value());
 				Map<String, Object> data = new HashMap<String, Object>();
+				data.put("uIdGoogle", authentication.getName());
+
+				OAuth2User extractPrincipal = (OAuth2User) authentication.getPrincipal();
+				Map<String, Object> info = extractPrincipal.getAttributes();
+				data.put("email", info.get("email"));
+				data.put("info", info);
 				data.put("timestamp", Calendar.getInstance().getTime());
-				data.put("exception", response);
 
 				response.getOutputStream().println(objectMapper.writeValueAsString(data));
-
 			}
 		};
 	}
