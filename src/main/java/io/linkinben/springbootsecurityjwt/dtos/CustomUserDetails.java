@@ -20,9 +20,20 @@ public class CustomUserDetails extends User implements UserDetails {
 		this.uId = uId;
 	}
 
-	public CustomUserDetails(String uId, String email, String password,
+	private String uFullName;
+
+	public String getuFullName() {
+		return uFullName;
+	}
+
+	public void setuFullName(String uFullName) {
+		this.uFullName = uFullName;
+	}
+
+	public CustomUserDetails(String uId, String uName, String email, String password,
 			Collection<? extends GrantedAuthority> authorities) {
 		super(email, password, authorities);
 		this.uId = uId;
+		this.uFullName = uName;
 	}
 }

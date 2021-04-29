@@ -42,7 +42,6 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 		final String isRefreshToken = request.getHeader("refresh_token");
 
 		String username = null;
-
 		try {
 			// Extract token with correct header and token is expired?
 			if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
@@ -64,7 +63,7 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 					SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
 				}
 			}
-
+			
 			filterChain.doFilter(request, response);
 			
 		} catch (ExpiredJwtException e) {

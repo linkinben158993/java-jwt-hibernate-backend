@@ -1,5 +1,20 @@
 package io.linkinben.springbootsecurityjwt.repositories.impl;
 
+import java.beans.IntrospectionException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaUpdate;
+import javax.persistence.criteria.Root;
+import javax.persistence.metamodel.Attribute;
+import javax.persistence.metamodel.EntityType;
+import javax.persistence.metamodel.Metamodel;
 import javax.transaction.Transactional;
 
 import org.hibernate.HibernateException;
@@ -8,17 +23,30 @@ import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
 
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
+import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.repositories.UserRepository;
 
 @Repository
 @Transactional(rollbackOn = Exception.class)
-public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> implements UserRepository{
+public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> implements UserRepository {
+
+	@PersistenceContext
+	protected EntityManager entityManager;
 
 	@Override
-	public void update(Users user) {
-		// TODO Auto-generated method stub
-		
+	public void update(UserInfoDTO user) {
+		Session session = sessionFactory.getCurrentSession();
+		Users foundUser = this.findById(user.getuId());
+		foundUser.setFullName(user.getFullName() != null ? user.getFullName() : foundUser.getFullName());
+		foundUser.setAge(user.getAge()  != null ? user.getAge() : foundUser.getAge());
+		foundUser.setDob(user.getDob()  != null ? user.getDob() : foundUser.getDob());
+		try {
+			session.update(foundUser);
+		} catch (HibernateException e) {
+			e.printStackTrace();
+		}
+
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -51,5 +79,4 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		}
 		return null;
 	}
-
 }

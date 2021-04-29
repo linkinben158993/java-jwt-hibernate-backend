@@ -1,5 +1,6 @@
 package io.linkinben.springbootsecurityjwt.entities;
 
+import java.sql.Date;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -15,14 +16,17 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 
+import org.hibernate.annotations.DynamicUpdate;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity(name = "users")
 @Table(name = "users")
+@DynamicUpdate
 public class Users extends GenericEntities<String> {
 
 	@Id
-	@Column
+	@Column(updatable = false, nullable = false)
 	private String uId;
 
 	@NotBlank
@@ -33,6 +37,12 @@ public class Users extends GenericEntities<String> {
 	@NotBlank
 	@Column(name = "full_name", length = 100)
 	private String fullName;
+
+	@Column(name = "age")
+	private Integer age;
+
+	@Column(name = "dob")
+	private Date dob;
 
 	@NotBlank
 	@Column(length = 100)
@@ -66,6 +76,22 @@ public class Users extends GenericEntities<String> {
 
 	public void setFullName(String fullName) {
 		this.fullName = fullName;
+	}
+
+	public Integer getAge() {
+		return age;
+	}
+
+	public void setAge(Integer age) {
+		this.age = age;
+	}
+
+	public Date getDob() {
+		return dob;
+	}
+
+	public void setDob(Date dob) {
+		this.dob = dob;
 	}
 
 	public String getPassword() {

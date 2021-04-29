@@ -48,6 +48,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 			grantedAuthorities.add(new SimpleGrantedAuthority(item.getrName()));
 		}
 
-		return new CustomUserDetails(user.getuId(), user.getEmail(), user.getPassword(), grantedAuthorities);
+		return new CustomUserDetails(user.getuId(), user.getFullName(),user.getEmail(), user.getPassword(), grantedAuthorities);
 	}
 }
