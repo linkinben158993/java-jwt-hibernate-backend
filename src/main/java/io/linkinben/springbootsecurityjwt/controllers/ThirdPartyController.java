@@ -24,9 +24,9 @@ public class ThirdPartyController {
 	private OAuth2AuthorizedClientService authorizedClientService;
 	
 	@RequestMapping(value = "/register-google", method = RequestMethod.GET)
-	public String registerWithOAuth2() {
-		System.out.println("Ayo whatssup!");
-		return "Ayo whatssup!";
+	public ResponseEntity<?> registerGoogleWithOAuth2() {
+		
+		return null;
 	}
 
 	@RequestMapping(value = "/register-google/success", method = RequestMethod.GET)

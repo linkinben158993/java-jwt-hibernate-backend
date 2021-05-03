@@ -17,6 +17,7 @@ import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 @Service
 public class JWTUtils {
 	private String SECRET_KEY = "AnJWT";
+	private String SECRET_CREDENTIAL = "HelloWorld";
 	// Expire of 10 hours: 10 * 1000 * 60 * 60 Test 1 minutes: 1000 * 60
 	private int EXPIRATION = 10 * 1000 * 60 * 60; // Currently set for 10 hours
 
@@ -107,7 +108,20 @@ public class JWTUtils {
 				.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
 				.signWith(SignatureAlgorithm.HS256, SECRET_KEY).compact();
 	}
+	
+	public String genCredentialToken(String userDetails) {
+		Map<String, Object> claims = new HashMap<>();
+		return initCredentialToken(claims, userDetails);
+	}
+	
+	// Initialized credential token 
+	private String initCredentialToken(Map<String, Object> claims, String subject) {
+		return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
 
+				.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
+				.signWith(SignatureAlgorithm.HS256, SECRET_CREDENTIAL).compact();
+	}
+	
 	public Boolean validateToken(String token, UserDetails userDetails) {
 		final String username = extractSubject(token);
 		// return (username.equals(userDetails.getUsername()) &&

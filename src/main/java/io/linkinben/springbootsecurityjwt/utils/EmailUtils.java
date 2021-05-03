@@ -14,7 +14,7 @@ public class EmailUtils {
 
 	public void sendSimpleEmail(String to, String content) {
         SimpleMailMessage message = new SimpleMailMessage(); 
-        message.setFrom("noreply@bosch.com");
+        message.setFrom("thienan.nguyenhoang311@gmail.com");
         message.setTo(to); 
         message.setSubject("Sup Bitch"); 
         message.setText(content);

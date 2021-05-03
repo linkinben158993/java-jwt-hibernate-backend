@@ -45,6 +45,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 //import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
+import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
@@ -120,7 +121,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				data.put("info", info);
 				data.put("timestamp", Calendar.getInstance().getTime());
 
-				response.getOutputStream().println(objectMapper.writeValueAsString(data));
+				JWTUtils jwtUtils = new JWTUtils();
+//				response.getOutputStream().println(objectMapper.writeValueAsString(data));
+				response.sendRedirect("http://localhost:4200/login/" + jwtUtils.genCredentialToken(objectMapper.writeValueAsString(data)));
 			}
 		};
 	}
@@ -134,13 +137,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 					AuthenticationException exception) throws IOException, ServletException {
 
 				System.out.println("Failed");
-
 				response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 				Map<String, Object> data = new HashMap<String, Object>();
 				data.put("timestamp", Calendar.getInstance().getTime());
 				data.put("exception", exception.getMessage());
 
-				response.getOutputStream().println(objectMapper.writeValueAsString(data));
+//				response.getOutputStream().println(objectMapper.writeValueAsString(data));
+				response.sendRedirect("http://localhost:4200/login/" + objectMapper.writeValueAsString(data));
 			}
 		};
 	}

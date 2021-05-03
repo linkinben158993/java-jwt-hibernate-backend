@@ -35,7 +35,7 @@ public class EmailConfig {
 		try {
 			store = session.getStore("imap");
 			try {
-				store.connect("imap.gmail.com", "thienan.nguyenhoang.411@gmail.com", "Thienanvip@4321");
+				store.connect("imap.gmail.com", "thienan.nguyenhoang.411@gmail.com", "********");
 			} catch (MessagingException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
