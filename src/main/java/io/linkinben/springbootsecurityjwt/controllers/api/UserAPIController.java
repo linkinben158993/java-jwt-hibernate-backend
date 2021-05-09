@@ -47,6 +47,25 @@ public class UserAPIController {
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
 	}
+	
+	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
+	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	public ResponseEntity<?> updateUserWithoutRole() {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			userService.editUsersRole();
+			response.put("title", "Update role.");
+			response.put("message", "All users updated!");
+			response.put("data", "Whatsup");
+			return new ResponseEntity<Object>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			response.put("title", "Request update users role.");
+			response.put("message", "Something happened!");
+			response.put("data", "Bad request!");
+			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+		}
+	}
 
 	@RequestMapping(value = "/register", method = RequestMethod.POST)
 	public ResponseEntity<?> register(@RequestBody Users user) {

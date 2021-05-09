@@ -79,4 +79,12 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 		}
 		return 0;
 	}
+
+	@Override
+	public void editUsersRole() {
+		Set<Roles> ownedRoles = new HashSet<Roles>();
+		Roles role = roleService.findByRoleName("ROLE_USER");
+		ownedRoles.add(role);
+		userRepository.updateUserRole(ownedRoles);
+	}
 }

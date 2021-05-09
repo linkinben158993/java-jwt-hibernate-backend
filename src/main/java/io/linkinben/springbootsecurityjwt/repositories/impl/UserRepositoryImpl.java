@@ -5,7 +5,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Repository;
 
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
 import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
+import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.repositories.UserRepository;
 
@@ -39,8 +42,8 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		Session session = sessionFactory.getCurrentSession();
 		Users foundUser = this.findById(user.getuId());
 		foundUser.setFullName(user.getFullName() != null ? user.getFullName() : foundUser.getFullName());
-		foundUser.setAge(user.getAge()  != null ? user.getAge() : foundUser.getAge());
-		foundUser.setDob(user.getDob()  != null ? user.getDob() : foundUser.getDob());
+		foundUser.setAge(user.getAge() != null ? user.getAge() : foundUser.getAge());
+		foundUser.setDob(user.getDob() != null ? user.getDob() : foundUser.getDob());
 		try {
 			session.update(foundUser);
 		} catch (HibernateException e) {
@@ -79,4 +82,35 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		}
 		return null;
 	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public void updateUserRole(Set<Roles> roles) {
+//		CriteriaBuilder cbUser = entityManager.getCriteriaBuilder();
+//		CriteriaUpdate<Users> cuUsers = cbUser.createCriteriaUpdate(Users.class);
+//		Root<Users> rootUsers = cuUsers.from(Users.class);
+//		cuUsers.set("roles", roles);
+//		cuUsers.where(cbUser.isNull(rootUsers.get("roles")));
+//		int result = entityManager.createQuery(cuUsers).executeUpdate();
+//		System.out.println("Result: " + result);
+		
+		Session session = sessionFactory.getCurrentSession();
+		String hql = "SELECT u FROM users u LEFT JOIN u.roles r WHERE r.rId IS NULL";
+		try {
+			Query<Users> query = session.createQuery(hql);
+			List<Users> foundUsers = query.getResultList();
+			for(Users item : foundUsers) {
+				item.setRoles(roles);
+			}
+			try {
+				session.update(foundUsers);
+			} catch (HibernateException e) {
+				e.printStackTrace();
+			}
+		} catch (HibernateException e) {
+			e.printStackTrace();
+		}
+		
+	}
+
 }
