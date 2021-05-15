@@ -13,6 +13,8 @@ public interface UserRepository extends GenericRepository<Users, String> {
 	int updatePassword(ChangePasswordDTO changePasswordDTO);
 
 	Users findByEmail(String email);
-
-	void updateUserRole(Set<Roles> roles);
+	
+	void batchUpdateUserRoleHQL(Set<Roles> roles);
+	
+	void batchUpdateUserRoleCriteria(Set<Roles> roles);
 }

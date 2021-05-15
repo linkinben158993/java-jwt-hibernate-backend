@@ -1,22 +1,16 @@
 package io.linkinben.springbootsecurityjwt.repositories.impl;
 
-import java.beans.IntrospectionException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.CriteriaUpdate;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
-import javax.persistence.metamodel.Attribute;
-import javax.persistence.metamodel.EntityType;
-import javax.persistence.metamodel.Metamodel;
 import javax.transaction.Transactional;
 
 import org.hibernate.HibernateException;
@@ -52,13 +46,12 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Override
 	public int updatePassword(ChangePasswordDTO changePasswordDTO) {
 		Session session = sessionFactory.getCurrentSession();
 		String hql = "UPDATE users SET " + "password = :password " + "WHERE email = :email";
 		try {
-			Query query = session.createQuery(hql);
+			Query<Users> query = session.createQuery(hql, Users.class);
 			query.setParameter("password", changePasswordDTO.getPassword());
 			query.setParameter("email", changePasswordDTO.getEmail());
 
@@ -83,23 +76,54 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		return null;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public void updateUserRole(Set<Roles> roles) {
-//		CriteriaBuilder cbUser = entityManager.getCriteriaBuilder();
-//		CriteriaUpdate<Users> cuUsers = cbUser.createCriteriaUpdate(Users.class);
-//		Root<Users> rootUsers = cuUsers.from(Users.class);
-//		cuUsers.set("roles", roles);
-//		cuUsers.where(cbUser.isNull(rootUsers.get("roles")));
-//		int result = entityManager.createQuery(cuUsers).executeUpdate();
-//		System.out.println("Result: " + result);
+	public void batchUpdateUserRoleCriteria(Set<Roles> roles) {
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Users> cqUser = cb.createQuery(Users.class);
+
+		Root<Users> rootQueryUsers = cqUser.from(Users.class);
+		Predicate roleIsEmpty = cb.isEmpty(rootQueryUsers.get("roles"));
+
+		// Select
+		cqUser.where(roleIsEmpty);
+		TypedQuery<Users> queryUserWithoutRole = entityManager.createQuery(cqUser.select(rootQueryUsers));
+		List<Users> foundUsers = queryUserWithoutRole.getResultList();
+		System.out.println("Found Users: " + foundUsers.size());
+
+		// Update
 		
+		// More research here
+//		CriteriaUpdate<Users> cuUsers = cb.createCriteriaUpdate(Users.class);
+//		// Set Root Update Class
+//		Root<Users> rootUpdateUsers = cuUsers.from(Users.class);
+//
+//		cuUsers.set("roles", roles);
+//		cuUsers.where(cb.isEmpty(rootUpdateUsers.get("roles")));
+//		int result = entityManager.createQuery(cuUsers).executeUpdate();
+//		System.out.println("Update Result: " + result);
+
 		Session session = sessionFactory.getCurrentSession();
+		for (Users item : foundUsers) {
+			item.setRoles(roles);
+		}
+		try {
+			session.update(foundUsers);
+		} catch (HibernateException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void batchUpdateUserRoleHQL(Set<Roles> roles) {
+		Session session = sessionFactory.getCurrentSession();
+//		Or This:
+//		String hql = "FROM users u left join u.roles r where r.rId is null";
 		String hql = "SELECT u FROM users u LEFT JOIN u.roles r WHERE r.rId IS NULL";
 		try {
-			Query<Users> query = session.createQuery(hql);
+			Query<Users> query = session.createQuery(hql, Users.class);
 			List<Users> foundUsers = query.getResultList();
-			for(Users item : foundUsers) {
+			System.out.println("Update user size: " + foundUsers.size());
+			for (Users item : foundUsers) {
 				item.setRoles(roles);
 			}
 			try {
@@ -110,7 +134,6 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		} catch (HibernateException e) {
 			e.printStackTrace();
 		}
-		
 	}
 
 }

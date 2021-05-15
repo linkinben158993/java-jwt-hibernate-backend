@@ -75,6 +75,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				// Public end-points and apis
 				.antMatchers("/home/*").permitAll().antMatchers("/authenticate/*").permitAll().antMatchers("/oauth/*")
 				.permitAll().antMatchers("/error/*").permitAll().antMatchers("/api/user/register").permitAll()
+	            .antMatchers("/ws/**", "/topic", "/app/**").permitAll()
 				// Restricted apis
 				.antMatchers("/api/user").hasRole("ADMIN")
 				// Only admin can add another role

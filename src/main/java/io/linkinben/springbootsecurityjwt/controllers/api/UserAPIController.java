@@ -27,8 +27,8 @@ public class UserAPIController {
 
 	@Autowired
 	private UserService userService;
-	
-	@Autowired EmailUtils emailUtils;
+
+	// @Autowired EmailUtils emailUtils;
 
 	@RequestMapping(value = "", method = RequestMethod.GET)
 	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
@@ -47,7 +47,26 @@ public class UserAPIController {
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
 		}
 	}
-	
+
+	@RequestMapping(value = "/no-role", method = RequestMethod.GET)
+	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	public ResponseEntity<?> findAllUsersWithoutRole() {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			userService.editAllWithoutRole();
+			response.put("title", "Update role.");
+			response.put("message", "All users updated!");
+			response.put("data", "Whatsup");
+			return new ResponseEntity<Object>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			response.put("title", "Request update users role.");
+			response.put("message", "Something happened!");
+			response.put("data", "Bad request!");
+			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+		}
+	}
+
 	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
 	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
 	public ResponseEntity<?> updateUserWithoutRole() {
@@ -71,23 +90,30 @@ public class UserAPIController {
 	public ResponseEntity<?> register(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
+			if (userService.findByEmail(user.getEmail()) != null) {
+				response.put("title", "Request for a new account.");
+				response.put("message", "Email has already been used!");
+				response.put("errCode", "ERR_USER_EXIST");
+				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			}
 			userService.add(user);
 			response.put("title", "Create new user.");
 			response.put("message", "New user created!");
 			response.put("data", user.getEmail());
-			emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
+			// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
 			return new ResponseEntity<Object>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");
 			response.put("message", "Something happened!");
-			response.put("data", "Bad request!");
+			response.put("errCode", "ERR_SERVER_ERROR");
 			e.printStackTrace();
-			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
 	@RequestMapping(value = "/change-password", method = RequestMethod.POST)
-	public ResponseEntity<?> changePassword(@RequestHeader(value = "access_token") String access_token, @RequestBody ChangePasswordDTO user) {
+	public ResponseEntity<?> changePassword(@RequestHeader(value = "access_token") String access_token,
+			@RequestBody ChangePasswordDTO user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			userService.editPassword(user);

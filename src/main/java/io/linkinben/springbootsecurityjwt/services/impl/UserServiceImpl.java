@@ -29,7 +29,7 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 	public void add(Users user) {
 		try {
 			Set<Roles> ownedRoles = new HashSet<Roles>();
-			Roles role = roleService.findByRoleName("ROLE_USER");
+			Roles role = roleService.findByRoleName("ROLE_ADMIN");
 			System.out.println(role.getrId());
 			System.out.println(role.getrName());
 			ownedRoles.add(role);
@@ -85,6 +85,14 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 		Set<Roles> ownedRoles = new HashSet<Roles>();
 		Roles role = roleService.findByRoleName("ROLE_USER");
 		ownedRoles.add(role);
-		userRepository.updateUserRole(ownedRoles);
+		userRepository.batchUpdateUserRoleHQL(ownedRoles);
+	}
+
+	@Override
+	public void editAllWithoutRole() {
+		Set<Roles> ownedRoles = new HashSet<Roles>();
+		Roles role = roleService.findByRoleName("ROLE_USER");
+		ownedRoles.add(role);
+		userRepository.batchUpdateUserRoleCriteria(ownedRoles);
 	}
 }

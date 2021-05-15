@@ -53,7 +53,7 @@ public class HibernateConfig {
 		
 		properties.put(StringConstants.PROPS_KEY_DIALECT, StringConstants.PROPS_VALUE_DIALECT_DATABASE);
 
-		properties.put(StringConstants.PROPS_KEY_SHOW_SQL, true);
+		properties.put(StringConstants.PROPS_KEY_SHOW_SQL, false);
 
 		properties.put(StringConstants.PROPS_KEY_FORMAT, true);
 

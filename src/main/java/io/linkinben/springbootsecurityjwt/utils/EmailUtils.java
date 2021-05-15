@@ -6,19 +6,19 @@ import org.springframework.stereotype.Component;
 
 import io.linkinben.springbootsecurityjwt.configs.EmailConfig;
 
-@Component
+//@Component
 public class EmailUtils {
-	@Autowired
-	private EmailConfig emailConfig;
-	
-
-	public void sendSimpleEmail(String to, String content) {
-        SimpleMailMessage message = new SimpleMailMessage(); 
-        message.setFrom("thienan.nguyenhoang311@gmail.com");
-        message.setTo(to); 
-        message.setSubject("Sup Bitch"); 
-        message.setText(content);
-		// emailConfig.getJavaMailSender().send(message);
-        emailConfig.getJavaMailSender().send(message);
-	}
+//	@Autowired
+//	private EmailConfig emailConfig;
+//	
+//
+//	public void sendSimpleEmail(String to, String content) {
+//        SimpleMailMessage message = new SimpleMailMessage(); 
+//        message.setFrom("thienan.nguyenhoang311@gmail.com");
+//        message.setTo(to); 
+//        message.setSubject("Sup Bitch"); 
+//        message.setText(content);
+//		// emailConfig.getJavaMailSender().send(message);
+//        emailConfig.getJavaMailSender().send(message);
+//	}
 }

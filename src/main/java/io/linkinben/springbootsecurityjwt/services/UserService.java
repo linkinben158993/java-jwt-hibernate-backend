@@ -9,7 +9,7 @@ import io.linkinben.springbootsecurityjwt.entities.Users;
 public interface UserService extends GenericService<Users, String> {
 
 	List<Users> findAll();
-
+	
 	Users findByEmail(String email);
 
 	// Had to override add because adding user requires hashing of password
@@ -19,6 +19,8 @@ public interface UserService extends GenericService<Users, String> {
 	void edit(UserInfoDTO user);
 
 	void editUsersRole();
+	
+	void editAllWithoutRole();
 
 	int editPassword(ChangePasswordDTO changePasswordDTO);
 
