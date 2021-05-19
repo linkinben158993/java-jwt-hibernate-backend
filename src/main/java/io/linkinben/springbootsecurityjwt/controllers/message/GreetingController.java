@@ -6,7 +6,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
-import io.linkinben.springbootsecurityjwt.controllers.message.entities.Message;
+import io.linkinben.springbootsecurityjwt.services.message.entities.Messages;
 
 @Controller
 public class GreetingController {
@@ -14,17 +14,17 @@ public class GreetingController {
 
     @MessageMapping("/hello")
     @SendTo("/topic/greetings")
-    public Message greeting(Message message) throws Exception {
+    public Messages greeting(Messages message) throws Exception {
         logger.info(message.getSender() + " at hello -> topic/greetings! " + message.getContent());
-        return new Message(Message.MessageType.JOIN, "Public Server", "Hello, " + message.getSender() + " !");
+        return new Messages(Messages.MessageType.JOIN, "Public Server", "Hello, " + message.getSender() + " !");
     }
 
     @MessageMapping("/join")
     @SendTo("/topic/public")
-    public Message join(Message message) throws Exception {
+    public Messages join(Messages message) throws Exception {
         logger.info(message.getSender() + " at join -> topic/public! " + message.getContent());
-        if (message.getMessageType().equals(Message.MessageType.JOIN)) {
-            return new Message(Message.MessageType.JOIN, "Public Server", message.getContent());
+        if (message.getMessageType().equals(Messages.MessageType.JOIN)) {
+            return new Messages(Messages.MessageType.JOIN, "Public Server", message.getContent());
         }
         return null;
     }

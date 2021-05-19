@@ -8,22 +8,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import io.linkinben.springbootsecurityjwt.controllers.message.entities.Message;
+import io.linkinben.springbootsecurityjwt.services.message.entities.Messages;
 
 @Component
 public class SocketListener {
     private Logger logger = LoggerFactory.getLogger(SocketListener.class);
 
-    protected String publicChannel = "";
-    protected Map<String, List<String>> tracking_variable = new HashMap<>();
-
     @Autowired
-    private SimpMessageSendingOperations simpMessageSendingOperations;
+    protected Messages trackingVariable;
 
     @EventListener
     public void handleWebSocketConnectionListener(SessionConnectedEvent event) {
@@ -33,50 +29,30 @@ public class SocketListener {
         logger.info("User headers: " + headerAccessor.getUser().getName());
         String username = headerAccessor.getUser().getName();
 
-        GenericMessage messageHeaders = (GenericMessage) headerAccessor.getMessageHeaders().get("simpConnectMessage");
-        logger.info("Room id headers: " + messageHeaders.getHeaders().get("uniqueRoomId"));
-        String publicRoom = messageHeaders.getHeaders().get("uniqueRoomId").toString();
+        String publicRoom = headerAccessor.getMessageHeaders().get("uniqueRoomId").toString();
+        logger.info("Public room id: " + publicRoom);
 
-        if (!publicChannel.equals("")) {
-            logger.info("No need to create new public channel");
-        } else {
-            logger.info("Create new public channel!");
-            publicChannel = publicRoom;
-        }
-
-        if (tracking_variable.containsKey("online_users")) {
-            tracking_variable.get("online_users").add(username);
+        if (trackingVariable.getTrackingVariables().containsKey("online_users")) {
+            trackingVariable.getTrackingVariables().get("online_users").add(username);
         } else {
             List<String> listOnlineUsers = new ArrayList<String>();
             listOnlineUsers.add(username);
-            tracking_variable.put("online_users", listOnlineUsers);
+            trackingVariable.getTrackingVariables().put("online_users", listOnlineUsers);
         }
 
         logger.info("User connecting: " + username + ".");
-        logger.info("Online user: " + tracking_variable.get("online_users").size() + ".");
+        logger.info("Online user: " + trackingVariable.getTrackingVariables().get("online_users").size() + ".");
     }
 
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        logger.info("User disconnected!");
 
         String username = headerAccessor.getUser().getName();
+        logger.info("Disconnect handler: " + headerAccessor.getMessageHeaders());
         if (username != null) {
-            logger.info("User Disconnected : " + username);
-
-            if (tracking_variable.containsKey("online_users")) {
-                tracking_variable.get("online_users").remove(username);
-                Message chatMessage = new Message();
-                chatMessage.setMessageType(Message.MessageType.LEAVE);
-                chatMessage.setSender(username);
-                chatMessage.setContent(username + " has left the chat!");
-
-                simpMessageSendingOperations.convertAndSend("/topic/public", chatMessage);
-            }
-
             logger.info("User disconnected: " + username + ".");
-            logger.info("Online user: " + tracking_variable.get("online_users").size() + ".");
+            logger.info("Online user: " + trackingVariable.getTrackingVariables().get("online_users").size() + ".");
         }
     }
 }
