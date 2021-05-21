@@ -1,0 +1,4 @@
+FROM openjdk:8-jdk-alpine
+ADD target/springboot-security-jwt-linkinben.jar springboot-security-jwt-linkinben.jar
+EXPOSE 4201
+ENTRYPOINT ["java", "-jar" , "springboot-security-jwt-linkinben.jar"]

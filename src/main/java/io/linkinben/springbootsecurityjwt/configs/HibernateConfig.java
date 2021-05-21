@@ -4,9 +4,10 @@ import java.util.Properties;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
+//import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.hibernate5.HibernateTransactionManager;
 import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -17,27 +18,31 @@ import io.linkinben.springbootsecurityjwt.StringConstants;
 @EnableTransactionManagement()
 public class HibernateConfig {
 
-	@Bean
-	public DataSource dataSource() {
-
-		DriverManagerDataSource dataSource = new DriverManagerDataSource();
-
-		dataSource.setDriverClassName(StringConstants.DATA_SOURCE_DRIVER_CLASS_NAME);
-
-		dataSource.setUrl(StringConstants.DATA_SOURCE_URL);
-
-		dataSource.setUsername(StringConstants.DATA_SOURCE_USER_NAME);
-
-		dataSource.setPassword(StringConstants.DATA_SOURCE_PASSWORD);
-
-		return dataSource;
-	}
+//	@Bean
+//	public DataSource dataSource() {
+//
+//		DriverManagerDataSource dataSource = new DriverManagerDataSource();
+//
+//		dataSource.setDriverClassName(StringConstants.DATA_SOURCE_DRIVER_CLASS_NAME);
+//
+//		dataSource.setUrl(StringConstants.DATA_SOURCE_URL);
+//
+//		dataSource.setUsername(StringConstants.DATA_SOURCE_USER_NAME);
+//
+//		dataSource.setPassword(StringConstants.DATA_SOURCE_PASSWORD);
+//
+//		return dataSource;
+//	}
+	
+	@Autowired
+	public DataSource dataSource;
 
 	@Bean
 	public LocalSessionFactoryBean sessionFactory() {
 		LocalSessionFactoryBean bean = new LocalSessionFactoryBean();
 
-		bean.setDataSource(dataSource());
+//		bean.setDataSource(dataSource());
+		bean.setDataSource(dataSource);
 
 		bean.setPackagesToScan("io.linkinben");
 

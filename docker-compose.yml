@@ -1,0 +1,36 @@
+version: '3.5'
+services:
+  mysql-docker-standalone:
+    image: "mysql:8"
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3307:3306"
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_PASSWORD: root
+#      MYSQL_DATABASE: jwt_db
+#      MYSQL_ROOT_HOST: '%'
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+    volumes:
+      - './database_storage:/docker-entrypoint-initdb.d'
+    restart: always
+  springboot-docker-container:
+    image: springboot-docker-container
+    build:
+      context: "./"
+      dockerfile: "DockerFile"
+    ports:
+      - "4201:4201"
+    restart: always
+    depends_on:
+      mysql-docker-standalone:
+        condition: service_healthy
+    command: "mvn clean spring-boot:run"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-docker-standalone:3306/jwt_db?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "root"
