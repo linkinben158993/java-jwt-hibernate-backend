@@ -86,6 +86,33 @@ public class UserAPIController {
 		}
 	}
 
+	@RequestMapping(value = "/refer-admin", method = RequestMethod.POST)
+	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	public ResponseEntity<?> referAdmin(@RequestBody Users user) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			if (userService.findByEmail(user.getEmail()) != null) {
+				response.put("title", "Request for a new account.");
+				response.put("message", "Email has already been used!");
+				response.put("errCode", "ERR_USER_EXIST");
+				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			}else {
+				userService.add(user, "ROLE_ADMIN");
+				response.put("title", "Create new admin user.");
+				response.put("message", "New admin user add!");
+				response.put("data", user.getEmail());
+				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
+				return new ResponseEntity<Object>(response, HttpStatus.OK);				
+			}
+		} catch (Exception e) {
+			response.put("title", "Request for a new account.");
+			response.put("message", "Something happened!");
+			response.put("errCode", "ERR_SERVER_ERROR");
+			e.printStackTrace();
+			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
 	@RequestMapping(value = "/register", method = RequestMethod.POST)
 	public ResponseEntity<?> register(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
@@ -95,13 +122,14 @@ public class UserAPIController {
 				response.put("message", "Email has already been used!");
 				response.put("errCode", "ERR_USER_EXIST");
 				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			}else {
+				userService.add(user, "ROLE_USER");
+				response.put("title", "Create new user.");
+				response.put("message", "New user created!");
+				response.put("data", user.getEmail());
+				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
+				return new ResponseEntity<Object>(response, HttpStatus.OK);				
 			}
-			userService.add(user);
-			response.put("title", "Create new user.");
-			response.put("message", "New user created!");
-			response.put("data", user.getEmail());
-			// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
-			return new ResponseEntity<Object>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");
 			response.put("message", "Something happened!");

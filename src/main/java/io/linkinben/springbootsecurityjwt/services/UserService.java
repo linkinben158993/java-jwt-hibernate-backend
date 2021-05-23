@@ -13,7 +13,7 @@ public interface UserService extends GenericService<Users, String> {
 	Users findByEmail(String email);
 
 	// Had to override add because adding user requires hashing of password
-	void add(Users user);
+	void add(Users user, String roleName);
 
 	// Edit user
 	void edit(UserInfoDTO user);

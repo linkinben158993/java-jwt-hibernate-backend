@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,8 @@ import io.linkinben.springbootsecurityjwt.services.UserService;
 
 @Service
 public class UserServiceImpl extends GenericServiceImpl<Users, String> implements UserService {
+    Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
+	
 	@Autowired
 	protected UserRepository userRepository;
 
@@ -26,12 +30,12 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 	private RoleService roleService;
 
 	@Override
-	public void add(Users user) {
+	public void add(Users user, String roleName) {
 		try {
 			Set<Roles> ownedRoles = new HashSet<Roles>();
-			Roles role = roleService.findByRoleName("ROLE_ADMIN");
-			System.out.println(role.getrId());
-			System.out.println(role.getrName());
+			Roles role = roleService.findByRoleName(roleName);
+			logger.info(role.getrId());
+			logger.info(role.getrName());
 			ownedRoles.add(role);
 			user.setRoles(ownedRoles);
 			String id = UUID.randomUUID().toString();
@@ -40,9 +44,8 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 			user.setPassword(hashed);
 			userRepository.insert(user);
 		} catch (Exception e) {
-			System.out.println(e);
+			e.printStackTrace();
 		}
-
 	}
 
 	@Override
