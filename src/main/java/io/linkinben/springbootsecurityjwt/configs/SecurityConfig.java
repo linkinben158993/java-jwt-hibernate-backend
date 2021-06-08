@@ -22,8 +22,6 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -32,12 +30,9 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 // Research more
 //import org.springframework.web.cors.CorsConfiguration;
@@ -45,10 +40,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 //import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	
+	@Autowired
+	private AuthenticationHandler customAuthHandler;
 
 	@Autowired
 	private UserDetailsServiceImpl myUserDetailService;
@@ -75,7 +72,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				// Public end-points and apis
 				.antMatchers("/home/*").permitAll().antMatchers("/authenticate/*").permitAll().antMatchers("/oauth/*")
 				.permitAll().antMatchers("/error/*").permitAll().antMatchers("/api/user/register").permitAll()
-	            .antMatchers("/ws/**", "/topic", "/app/**").permitAll()
+				.antMatchers("/ws/**", "/topic", "/app/**").permitAll()
 				// Restricted apis
 				.antMatchers("/api/user").hasRole("ADMIN")
 				// Only admin can add another role
@@ -84,8 +81,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/js/**", "/css/**", "/csrf").permitAll().antMatchers("/swagger-ui.html").permitAll()
 				.anyRequest().authenticated().and().sessionManagement()
 				.sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().oauth2Login()
-				.defaultSuccessUrl("/oauth/register-google/success").successHandler(this.successHandler())
-				.failureHandler(this.failureHandler());
+				.successHandler(this.customAuthHandler.successHandler).failureHandler(this.customAuthHandler.failureHandler);
 		http.addFilterBefore(requestFilterConfig, UsernamePasswordAuthenticationFilter.class);
 	}
 
@@ -105,49 +101,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 //		return source;
 //	}
 
-	private AuthenticationSuccessHandler successHandler() {
-		return new AuthenticationSuccessHandler() {
-			private ObjectMapper objectMapper = new ObjectMapper();
-
-			@Override
-			public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-					Authentication authentication) throws IOException, ServletException {
-				response.setStatus(HttpStatus.OK.value());
-				Map<String, Object> data = new HashMap<String, Object>();
-				data.put("uIdGoogle", authentication.getName());
-
-				OAuth2User extractPrincipal = (OAuth2User) authentication.getPrincipal();
-				Map<String, Object> info = extractPrincipal.getAttributes();
-				data.put("email", info.get("email"));
-				data.put("info", info);
-				data.put("timestamp", Calendar.getInstance().getTime());
-
-				JWTUtils jwtUtils = new JWTUtils();
-//				response.getOutputStream().println(objectMapper.writeValueAsString(data));
-				response.sendRedirect("http://localhost:4200/login/" + jwtUtils.genCredentialToken(objectMapper.writeValueAsString(data)));
-			}
-		};
-	}
-
-	private AuthenticationFailureHandler failureHandler() {
-		return new AuthenticationFailureHandler() {
-			private ObjectMapper objectMapper = new ObjectMapper();
-
-			@Override
-			public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
-					AuthenticationException exception) throws IOException, ServletException {
-
-				System.out.println("Failed");
-				response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
-				Map<String, Object> data = new HashMap<String, Object>();
-				data.put("timestamp", Calendar.getInstance().getTime());
-				data.put("exception", exception.getMessage());
-
-//				response.getOutputStream().println(objectMapper.writeValueAsString(data));
-				response.sendRedirect("http://localhost:4200/login/" + objectMapper.writeValueAsString(data));
-			}
-		};
-	}
 
 	@Bean
 	public ClientRegistrationRepository clientRegistrationRepository() {
