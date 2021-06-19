@@ -34,10 +34,10 @@ public class AuthenticationHandler extends SavedRequestAwareAuthenticationSucces
 		@Override
 		public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 				Authentication authentication) throws IOException, ServletException {
+			System.out.println("Success");
 			response.setStatus(HttpStatus.OK.value());
 			Map<String, Object> data = new HashMap<String, Object>();
-			data.put("uIdGoogle", authentication.getName());
-
+			data.put("uId", authentication.getName());
 			OAuth2User extractPrincipal = (OAuth2User) authentication.getPrincipal();
 			Map<String, Object> info = extractPrincipal.getAttributes();
 			data.put("email", info.get("email"));
