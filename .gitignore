@@ -1,5 +1,6 @@
 HELP.md
 docs/migration.md
+docs/secrets.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
