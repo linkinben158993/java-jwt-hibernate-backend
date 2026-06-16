@@ -25,9 +25,9 @@ public class StringConstants {
 	public static String PROPS_KEY_DRIVERCLASSNAME = "spring.datasource.driverClassName";
 	// Dialect của MySQL
 	public static String PROPS_DIALECT_PLATFORM_DATABASE = "spring.jpa.database-platform";
-	public static String PROPS_VALUE_DIALECT_PLATFORM_DATABASE = "org.hibernate.dialect.MySQLDBDialect";
-	public static String PROPS_VALUE_DIALECT_DATABASE = "org.hibernate.dialect.MySQL55Dialect";
-	public static String PROPS_VALUE_DRIVERCLASSNAME = "com.mysql.jdbc.Driver";
+	public static String PROPS_VALUE_DIALECT_PLATFORM_DATABASE = "org.hibernate.dialect.MySQLDialect";
+	public static String PROPS_VALUE_DIALECT_DATABASE = "org.hibernate.dialect.MySQLDialect";
+	public static String PROPS_VALUE_DRIVERCLASSNAME = "com.mysql.cj.jdbc.Driver";
 	// Notice
 	public static String PROPS_KEY_JPA_OPEN_IN_VIEW = "spring.jpa.open-in-view";
 

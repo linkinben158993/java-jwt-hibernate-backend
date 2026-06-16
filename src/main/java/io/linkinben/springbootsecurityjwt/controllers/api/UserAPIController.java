@@ -19,7 +19,8 @@ import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.utils.EmailUtils;
-import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 @Controller
 @RequestMapping("api/user")
@@ -31,7 +32,7 @@ public class UserAPIController {
 	// @Autowired EmailUtils emailUtils;
 
 	@RequestMapping(value = "", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> findAllUsers() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -49,7 +50,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/no-role", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> findAllUsersWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -68,7 +69,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> updateUserWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -87,7 +88,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/refer-admin", method = RequestMethod.POST)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -158,7 +159,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/update-info", method = RequestMethod.POST)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {

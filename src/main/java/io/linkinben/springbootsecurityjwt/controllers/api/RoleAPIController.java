@@ -13,7 +13,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
-import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 @Controller
 @RequestMapping("api/role")
@@ -23,7 +24,7 @@ public class RoleAPIController {
 	private RoleService roleService;
 
 	@RequestMapping(value = "/add", method = RequestMethod.POST)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
 	public ResponseEntity<?> register(@RequestBody Roles role) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
