@@ -1,4 +1,5 @@
 HELP.md
+.env
 docs/migration.md
 docs/secrets.md
 target/
