@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,6 +22,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
+@Slf4j
 @Component
 public class RequestFilterConfig extends OncePerRequestFilter {
 
@@ -46,15 +48,14 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 			// Extract token with correct header and token is expired?
 			if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
 				username = jwtUtils.extractSubject(authorizationHeader);
-				System.out.println("Subject: " + username);
+				log.debug("Access token subject: {}", username);
 			}
 
 
 			// Check user details
 			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 				UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsername(username);
-				System.out.println("User details: " + userDetails.getUsername().toString());
-				System.out.println(userDetails.toString());
+				log.debug("Authenticating user: {}", userDetails.getUsername());
 				if (jwtUtils.validateToken(authorizationHeader, userDetails)) {
 					UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
 							userDetails, null, userDetails.getAuthorities());
@@ -67,15 +68,14 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 			filterChain.doFilter(request, response);
 			
 		} catch (ExpiredJwtException e) {
-			// If refresh token is in request
-			System.out.println("Access Token expired do something!");
+			log.warn("Access token expired, attempting refresh token fallback");
 			String uId = null;
 			// Todo: Do something with refresh token if appended in request headers!
 			if (authorizationHeader != null && isRefreshToken.startsWith("Authorization ")) {
 
 				try {
 					uId = jwtUtils.extractSubject(isRefreshToken);
-					System.out.println("Subject: " + uId);					
+					log.debug("Refresh token subject: {}", uId);
 					authorizeRefreshToken(e, request, uId);
 					filterChain.doFilter(request, response);
 				} catch (ExpiredJwtException e1) {

@@ -2,6 +2,7 @@ package io.linkinben.springbootsecurityjwt.services.impl;
 
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -9,6 +10,7 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.repositories.RoleRepository;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 
+@Slf4j
 @Service
 public class RoleServiceImpl extends GenericServiceImpl<Roles, String> implements RoleService {
 
@@ -22,7 +24,7 @@ public class RoleServiceImpl extends GenericServiceImpl<Roles, String> implement
 			role.setrId(id);
 			roleRepository.insert(role);
 		} catch (Exception e) {
-			System.out.println(e);
+			log.error("Failed to insert role: {}", role.getrName(), e);
 			throw e;
 		}
 	}

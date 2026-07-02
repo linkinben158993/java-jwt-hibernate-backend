@@ -16,8 +16,7 @@ import jakarta.transaction.Transactional;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
@@ -26,10 +25,10 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.repositories.UserRepository;
 
+@Slf4j
 @Repository
 @Transactional(rollbackOn = Exception.class)
 public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> implements UserRepository {
-    Logger logger = LoggerFactory.getLogger(UserRepositoryImpl.class);
 
 	@PersistenceContext
 	protected EntityManager entityManager;
@@ -91,7 +90,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		cqUser.where(roleIsEmpty);
 		TypedQuery<Users> queryUserWithoutRole = entityManager.createQuery(cqUser.select(rootQueryUsers));
 		List<Users> foundUsers = queryUserWithoutRole.getResultList();
-		logger.info("Found Users: " + foundUsers.size());
+		log.info("Found Users: " + foundUsers.size());
 
 		// Update
 		
@@ -125,7 +124,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		try {
 			Query<Users> query = session.createQuery(hql, Users.class);
 			List<Users> foundUsers = query.getResultList();
-			logger.info("Update user size: " + foundUsers.size());
+			log.info("Update user size: " + foundUsers.size());
 			for (Users item : foundUsers) {
 				item.setRoles(roles);
 			}

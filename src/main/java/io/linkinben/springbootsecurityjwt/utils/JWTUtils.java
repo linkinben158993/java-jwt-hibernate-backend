@@ -9,6 +9,7 @@ import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 
+@Slf4j
 @Service
 public class JWTUtils {
 
@@ -50,7 +52,7 @@ public class JWTUtils {
     public <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
         final Claims claims = extractAllClaims(token);
         String userId = claims.get("uId", String.class);
-        System.out.println(userId);
+        log.debug("Extracted claim uId: {}", userId);
         return claimResolver.apply(claims);
     }
 
@@ -82,7 +84,7 @@ public class JWTUtils {
         Map<String, Object> claims = new HashMap<>();
         String uId = ((CustomUserDetails) userDetails).getuId();
         String uFullName = ((CustomUserDetails) userDetails).getuFullName();
-        System.out.println(uId);
+        log.debug("Generating token for uId: {}", uId);
         claims.put("uId", uId);
         claims.put("uFullName", uFullName);
         return initToken(claims, userDetails.getUsername());

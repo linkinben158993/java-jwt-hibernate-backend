@@ -1,5 +1,6 @@
 package io.linkinben.springbootsecurityjwt.controllers;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,12 +11,13 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import io.jsonwebtoken.ExpiredJwtException;
 
+@Slf4j
 @RestControllerAdvice
 public class CustomErrorController extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(RuntimeException.class)
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public ResponseEntity<Object> processRuntimeException(RuntimeException e) {
-		System.out.println(e.getMessage());
+		log.error("RuntimeException caught: {}", e.getMessage(), e);
 		if (e instanceof ExpiredJwtException) {
 			return buildResponseEntity(createErrorDTO(HttpStatus.BAD_REQUEST, "Bad Token", e.getMessage(), e));
 		}

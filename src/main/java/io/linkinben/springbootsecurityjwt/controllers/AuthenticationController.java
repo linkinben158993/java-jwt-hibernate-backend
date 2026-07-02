@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
+@Slf4j
 @RestController
 @RequestMapping("authenticate")
 public class AuthenticationController {
@@ -67,8 +69,7 @@ public class AuthenticationController {
 			return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 
 		} catch (Exception e) {
-			System.out.println("Not Okay");
-			System.out.println(e);
+			log.error("Login authentication failed", e);
 			response.put("title", "Bad Credential!");
 			response.put("message", "Access Denied!");
 			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
@@ -84,7 +85,7 @@ public class AuthenticationController {
 		data.put("code", "default");
 		data.put("state", "default");
 		try {
-			System.out.println("Some name: " + user);
+			log.debug("OIDC user principal: {}", user);
 			data.put("code", code);
 			data.put("state", state);
 		} catch (Exception e) {
