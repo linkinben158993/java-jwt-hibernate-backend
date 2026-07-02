@@ -8,7 +8,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +19,8 @@ import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.utils.EmailUtils;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
-@Controller
+@RestController
 @RequestMapping("api/user")
 public class UserAPIController {
 
@@ -32,8 +30,7 @@ public class UserAPIController {
 	// @Autowired EmailUtils emailUtils;
 
 	@RequestMapping(value = "", method = RequestMethod.GET)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> findAllUsers() {
+public ResponseEntity<?> findAllUsers() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			List<Users> users = userService.findAll();
@@ -50,8 +47,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/no-role", method = RequestMethod.GET)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> findAllUsersWithoutRole() {
+public ResponseEntity<?> findAllUsersWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			userService.editAllWithoutRole();
@@ -69,8 +65,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> updateUserWithoutRole() {
+public ResponseEntity<?> updateUserWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			userService.editUsersRole();
@@ -88,8 +83,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/refer-admin", method = RequestMethod.POST)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> referAdmin(@RequestBody Users user) {
+public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			if (userService.findByEmail(user.getEmail()) != null) {
@@ -159,8 +153,7 @@ public class UserAPIController {
 	}
 
 	@RequestMapping(value = "/update-info", method = RequestMethod.POST)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
+public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			// Principal is current user extract from token

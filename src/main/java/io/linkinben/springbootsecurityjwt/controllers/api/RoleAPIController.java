@@ -6,17 +6,15 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
 import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
-@Controller
+@RestController
 @RequestMapping("api/role")
 public class RoleAPIController {
 
@@ -24,8 +22,7 @@ public class RoleAPIController {
 	private RoleService roleService;
 
 	@RequestMapping(value = "/add", method = RequestMethod.POST)
-	@Parameter(name = "access_token", required = true, in = ParameterIn.HEADER, example = "Bearer access_token")
-	public ResponseEntity<?> register(@RequestBody Roles role) {
+public ResponseEntity<?> register(@RequestBody Roles role) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			roleService.add(role);
