@@ -25,7 +25,7 @@ public class HomeController {
 		this.welcomeString = welcomeMessage;
 	}
 
-	@RequestMapping(value = "/helloWorld", method = RequestMethod.GET)
+	@RequestMapping(value = "/hello-world", method = RequestMethod.GET)
 	public ResponseEntity<Object> Welcome() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {

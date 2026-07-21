@@ -21,7 +21,7 @@ import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.utils.EmailUtils;
 
 @RestController
-@RequestMapping("api/user")
+@RequestMapping("api/users")
 public class UserAPIController {
 
 	@Autowired
@@ -30,7 +30,7 @@ public class UserAPIController {
 	// @Autowired EmailUtils emailUtils;
 
 	@RequestMapping(value = "", method = RequestMethod.GET)
-public ResponseEntity<?> findAllUsers() {
+	public ResponseEntity<?> findAllUsers() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			List<Users> users = userService.findAll();
@@ -46,8 +46,8 @@ public ResponseEntity<?> findAllUsers() {
 		}
 	}
 
-	@RequestMapping(value = "/no-role", method = RequestMethod.GET)
-public ResponseEntity<?> findAllUsersWithoutRole() {
+	@RequestMapping(value = "/without-role", method = RequestMethod.GET)
+	public ResponseEntity<?> findAllUsersWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			userService.editAllWithoutRole();
@@ -64,8 +64,8 @@ public ResponseEntity<?> findAllUsersWithoutRole() {
 		}
 	}
 
-	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
-public ResponseEntity<?> updateUserWithoutRole() {
+	@RequestMapping(value = "/roles", method = RequestMethod.GET)
+	public ResponseEntity<?> updateUserWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			userService.editUsersRole();
@@ -82,8 +82,8 @@ public ResponseEntity<?> updateUserWithoutRole() {
 		}
 	}
 
-	@RequestMapping(value = "/refer-admin", method = RequestMethod.POST)
-public ResponseEntity<?> referAdmin(@RequestBody Users user) {
+	@RequestMapping(value = "/admin", method = RequestMethod.POST)
+	public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			if (userService.findByEmail(user.getEmail()) != null) {
@@ -91,39 +91,13 @@ public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 				response.put("message", "Email has already been used!");
 				response.put("errCode", "ERR_USER_EXIST");
 				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-			}else {
+			} else {
 				userService.add(user, "ROLE_ADMIN");
 				response.put("title", "Create new admin user.");
 				response.put("message", "New admin user add!");
 				response.put("data", user.getEmail());
 				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
-				return new ResponseEntity<Object>(response, HttpStatus.OK);				
-			}
-		} catch (Exception e) {
-			response.put("title", "Request for a new account.");
-			response.put("message", "Something happened!");
-			response.put("errCode", "ERR_SERVER_ERROR");
-			e.printStackTrace();
-			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-	
-	@RequestMapping(value = "/register", method = RequestMethod.POST)
-	public ResponseEntity<?> register(@RequestBody Users user) {
-		Map<String, Object> response = new HashMap<String, Object>();
-		try {
-			if (userService.findByEmail(user.getEmail()) != null) {
-				response.put("title", "Request for a new account.");
-				response.put("message", "Email has already been used!");
-				response.put("errCode", "ERR_USER_EXIST");
-				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-			}else {
-				userService.add(user, "ROLE_USER");
-				response.put("title", "Create new user.");
-				response.put("message", "New user created!");
-				response.put("data", user.getEmail());
-				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
-				return new ResponseEntity<Object>(response, HttpStatus.OK);				
+				return new ResponseEntity<Object>(response, HttpStatus.OK);
 			}
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");
@@ -134,7 +108,33 @@ public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		}
 	}
 
-	@RequestMapping(value = "/change-password", method = RequestMethod.POST)
+	@RequestMapping(value = "", method = RequestMethod.POST)
+	public ResponseEntity<?> register(@RequestBody Users user) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			if (userService.findByEmail(user.getEmail()) != null) {
+				response.put("title", "Request for a new account.");
+				response.put("message", "Email has already been used!");
+				response.put("errCode", "ERR_USER_EXIST");
+				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			} else {
+				userService.add(user, "ROLE_USER");
+				response.put("title", "Create new user.");
+				response.put("message", "New user created!");
+				response.put("data", user.getEmail());
+				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
+				return new ResponseEntity<Object>(response, HttpStatus.OK);
+			}
+		} catch (Exception e) {
+			response.put("title", "Request for a new account.");
+			response.put("message", "Something happened!");
+			response.put("errCode", "ERR_SERVER_ERROR");
+			e.printStackTrace();
+			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@RequestMapping(value = "/password", method = RequestMethod.PATCH)
 	public ResponseEntity<?> changePassword(@RequestHeader(value = "access_token") String access_token,
 			@RequestBody ChangePasswordDTO user) {
 		Map<String, Object> response = new HashMap<String, Object>();
@@ -152,11 +152,11 @@ public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		}
 	}
 
-	@RequestMapping(value = "/update-info", method = RequestMethod.POST)
-public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
+	@RequestMapping(value = "/info", method = RequestMethod.PATCH)
+	public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
-			// Principal is current user extract from token
+			// Principal is current user extracted from token
 			if (!userService.findByEmail(principal.getName()).getuId().equals(user.getuId())) {
 				response.put("title", "Request Change Info For: " + user.getFullName());
 				response.put("message", "You are not authorized to edit this user!");

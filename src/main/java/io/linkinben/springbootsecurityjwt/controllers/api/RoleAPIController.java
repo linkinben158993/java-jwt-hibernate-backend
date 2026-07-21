@@ -15,14 +15,14 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 
 @RestController
-@RequestMapping("api/role")
+@RequestMapping("api/roles")
 public class RoleAPIController {
 
 	@Autowired
 	private RoleService roleService;
 
-	@RequestMapping(value = "/add", method = RequestMethod.POST)
-public ResponseEntity<?> register(@RequestBody Roles role) {
+	@RequestMapping(value = "", method = RequestMethod.POST)
+	public ResponseEntity<?> create(@RequestBody Roles role) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
 			roleService.add(role);

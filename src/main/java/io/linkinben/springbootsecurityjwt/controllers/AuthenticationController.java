@@ -28,7 +28,7 @@ import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
 @Slf4j
 @RestController
-@RequestMapping("authenticate")
+@RequestMapping("api/auth")
 public class AuthenticationController {
 	@Autowired
 	private AuthenticationManager authenticationManager;
@@ -100,7 +100,7 @@ public class AuthenticationController {
 		return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 	}
 
-	@RequestMapping(value = "/refresh_token", method = RequestMethod.GET)
+	@RequestMapping(value = "/token/refresh", method = RequestMethod.GET)
 	public ResponseEntity<?> refreshToken(@RequestBody AuthenticationRequest authenticationRequest) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		response.put("title", "Good Credential!");

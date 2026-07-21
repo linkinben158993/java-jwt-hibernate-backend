@@ -8,39 +8,39 @@ spring:
     oauth2:
       client:
         registration:
-          okta:
+          # NOTE: This is Auth0 (auth0.com), not classic Okta — Okta redirects free developers to Auth0.
+          # Registration ID changed from 'okta' to 'auth0'; redirect URI is now:
+          #   http://localhost:4201/login/oauth2/code/auth0
+          # Register that URL in Auth0 Dashboard → Applications → your app → Allowed Callback URLs.
+          auth0:
             client-id: ${OKTA_CLIENT_ID}
             client-secret: ${OKTA_CLIENT_SECRET}
-            client-authentication-method: basic
+            client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-            scope: openid, profile, email, address, phone
+            scope: openid, profile, email
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            client-authentication-method: basic
+            client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-            scope: openid, profile, email, address, phone
+            scope: openid, profile, email
         provider:
-          okta:
-            issuer-uri: https://dev-63754972.okta.com/oauth2/default
-            authorization-uri: https://dev-63754972.okta.com/oauth2/default/v1/authorize
-            user-info-uri: https://dev-63754972.okta.com/oauth2/default/v1/userinfo
-            token-uri: https://dev-63754972.okta.com/oauth2/default/v1/token
+          # Auth0 OIDC discovery auto-populates all endpoint URLs — no need to list them individually.
+          auth0:
+            issuer-uri: https://dev-cubyp8uiwwf8ldh3.au.auth0.com/
             user-name-attribute: sub
-            jwk-set-uri: https://dev-63754972.okta.com/oauth2/default/v1/keys
           google:
             issuer-uri: https://accounts.google.com
-            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
-            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-            token-uri: https://www.googleapis.com/oauth2/v4/token
             user-name-attribute: sub
-            jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
 
+# okta-spring-boot-starter legacy properties — pointed at Auth0 issuer.
+# The starter may produce warnings about unrecognised domain format; safe to ignore for dev.
+# Consider removing the starter and relying solely on spring-boot-starter-oauth2-client.
 okta:
   oauth2:
-    issuer: https://dev-63754972.okta.com/oauth2/default
+    issuer: https://dev-cubyp8uiwwf8ldh3.au.auth0.com/
     clientId: ${OKTA_CLIENT_ID}
     clientSecret: ${OKTA_CLIENT_SECRET}
 

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── DEV: coloured console, verbose app logging ── -->
+    <springProfile name="dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%-20thread)] %cyan(%logger{40}) : %msg%n%ex</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <logger name="io.linkinben"                          level="DEBUG"/>
+        <logger name="org.springframework.web"               level="INFO"/>
+        <logger name="org.springframework.security"          level="INFO"/>
+        <logger name="org.hibernate.SQL"                     level="DEBUG"/>
+        <logger name="org.hibernate.orm.jdbc.bind"           level="TRACE"/>
+        <logger name="com.zaxxer.hikari"                     level="INFO"/>
+        <logger name="org.springframework.boot"              level="INFO"/>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- ── Non-dev / Docker: plain console, no ANSI ── -->
+    <springProfile name="!dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <!-- ISO-8601 timestamp suits log aggregators (Loki, CloudWatch, etc.) -->
+                <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ} %-5level [%thread] %logger{40} : %msg%n%ex</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <logger name="io.linkinben"                          level="INFO"/>
+        <logger name="org.springframework.web"               level="WARN"/>
+        <logger name="org.springframework.security"          level="WARN"/>
+        <logger name="org.hibernate.SQL"                     level="WARN"/>
+        <logger name="com.zaxxer.hikari"                     level="WARN"/>
+        <logger name="org.springframework.boot"              level="INFO"/>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

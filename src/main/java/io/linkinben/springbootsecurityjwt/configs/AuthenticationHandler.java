@@ -9,6 +9,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -26,7 +28,9 @@ import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 @Slf4j
 @Component
 public class AuthenticationHandler extends SavedRequestAwareAuthenticationSuccessHandler {
-	private ObjectMapper objectMapper = new ObjectMapper();
+	private final ObjectMapper objectMapper = new ObjectMapper()
+			.registerModule(new JavaTimeModule())
+			.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
 	public CustomSuccessHandler successHandler = new CustomSuccessHandler();
 	public CustomFailureHandler failureHandler = new CustomFailureHandler();

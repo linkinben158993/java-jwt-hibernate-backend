@@ -1,5 +1,6 @@
 package io.linkinben.springbootsecurityjwt.configs;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,15 +57,16 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/home/**", "/authenticate/**", "/oauth/**",
-                    "/error/**", "/api/user/register",
+                    "/home/**", "/api/auth/**", "/oauth/**",
+                    "/error/**",
                     "/ws/**", "/topic", "/app/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
                 .requestMatchers(
                     "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**"
                 ).permitAll()
-                .requestMatchers("/api/user").hasRole("ADMIN")
-                .requestMatchers("/api/role/add").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                .requestMatchers("/api/roles").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(sm ->
