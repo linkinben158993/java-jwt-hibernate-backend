@@ -19,6 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
@@ -33,6 +35,9 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 	private UserDetailsServiceImpl userDetailsServiceImpl;
 
 	@Autowired
+	private TokenBlacklistService tokenBlacklistService;
+
+	@Autowired
 	@Qualifier("handlerExceptionResolver")
 	private HandlerExceptionResolver resolver;
 
@@ -45,8 +50,15 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 
 		String username = null;
 		try {
-			// Extract token with correct header and token is expired?
 			if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+				String rawJwt = authorizationHeader.substring(7);
+				if (tokenBlacklistService.isBlacklisted(rawJwt)) {
+					// Don't set auth context — protected endpoints return 401 via AuthenticationEntryPoint;
+					// permitAll endpoints (e.g. /api/auth/logout itself) still pass through.
+					log.debug("Rejected blacklisted token");
+					filterChain.doFilter(request, response);
+					return;
+				}
 				username = jwtUtils.extractSubject(authorizationHeader);
 				log.debug("Access token subject: {}", username);
 			}
@@ -83,6 +95,9 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 					resolver.resolveException(request, response, null, e1);
 				}
 			}
+		} catch (JwtException e) {
+			log.warn("Invalid JWT token: {}", e.getMessage());
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
 		}
 	}
 

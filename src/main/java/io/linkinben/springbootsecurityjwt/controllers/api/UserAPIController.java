@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.linkinben.springbootsecurityjwt.entities.Roles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,9 @@ import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.utils.EmailUtils;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("api/users")
 public class UserAPIController {
@@ -28,6 +31,30 @@ public class UserAPIController {
 	private UserService userService;
 
 	// @Autowired EmailUtils emailUtils;
+
+	@RequestMapping(value = "/me", method = RequestMethod.GET)
+	public ResponseEntity<?> getCurrentUser(Principal principal) {
+		Map<String, Object> response = new HashMap<>();
+		try {
+			Users user = userService.findByEmail(principal.getName());
+			String role = user.getRoles().stream()
+					.map(Roles::getrName)
+					.findFirst()
+					.orElse("NO_ROLE");
+			Map<String, Object> data = new HashMap<>();
+			data.put("email", user.getEmail());
+			data.put("fullName", user.getFullName());
+			data.put("role", role);
+			response.put("title", "User profile");
+			response.put("message", "Profile retrieved");
+			response.put("data", data);
+			return new ResponseEntity<>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			log.error("GET /api/users/me failed", e);
+			response.put("message", "Could not retrieve profile");
+			return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+		}
+	}
 
 	@RequestMapping(value = "", method = RequestMethod.GET)
 	public ResponseEntity<?> findAllUsers() {

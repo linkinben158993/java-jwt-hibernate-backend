@@ -81,13 +81,23 @@ public class JWTUtils {
     }
 
     public String genToken(UserDetails userDetails) {
+        return genToken(userDetails, "password");
+    }
+
+    public String genToken(UserDetails userDetails, String loginMethod) {
         Map<String, Object> claims = new HashMap<>();
         String uId = ((CustomUserDetails) userDetails).getuId();
         String uFullName = ((CustomUserDetails) userDetails).getuFullName();
-        log.debug("Generating token for uId: {}", uId);
+        log.debug("Generating token for uId: {}, loginMethod: {}", uId, loginMethod);
         claims.put("uId", uId);
         claims.put("uFullName", uFullName);
+        claims.put("loginMethod", loginMethod);
         return initToken(claims, userDetails.getUsername());
+    }
+
+    public String extractLoginMethod(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims != null ? claims.get("loginMethod", String.class) : null;
     }
 
     private String initToken(Map<String, Object> claims, String subject) {
@@ -129,6 +139,15 @@ public class JWTUtils {
                 .expiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
                 .signWith(credentialKey)
                 .compact();
+    }
+
+    public String extractCredentialSubject(String token) {
+        return Jwts.parser()
+                .verifyWith(credentialKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {

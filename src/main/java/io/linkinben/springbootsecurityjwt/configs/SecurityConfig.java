@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -71,6 +72,15 @@ public class SecurityConfig {
             )
             .sessionManagement(sm ->
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .exceptionHandling(ex -> ex
+                // Only REST API paths get a 401 JSON error — browser navigations (e.g. OAuth2 flow)
+                // still receive the default redirect-to-login behaviour from oauth2Login().
+                .defaultAuthenticationEntryPointFor(
+                    (request, response, e) ->
+                        response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"),
+                    request -> request.getServletPath().startsWith("/api/")
+                )
             )
             .oauth2Login(oauth -> oauth
                 .successHandler(customAuthHandler.successHandler)
