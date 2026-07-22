@@ -44,6 +44,15 @@ okta:
     clientId: ${OKTA_CLIENT_ID}
     clientSecret: ${OKTA_CLIENT_SECRET}
 
+# Auth0 logout — used by POST /api/auth/logout to build the /v2/logout redirect URL.
+# client-id reuses the same env var as the OAuth2 registration above.
+# returnTo must be registered in Auth0 Dashboard → Applications → Allowed Logout URLs.
+auth0:
+  logout:
+    domain: dev-cubyp8uiwwf8ldh3.au.auth0.com
+    client-id: ${OKTA_CLIENT_ID}
+    return-to: http://localhost:4200
+
 # Mail — disabled. Uncomment and set MAIL_USERNAME / MAIL_PASSWORD to enable.
 # spring:
 #   mail:
