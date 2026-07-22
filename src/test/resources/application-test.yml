@@ -1,0 +1,78 @@
+# Test profile — activated by @ActiveProfiles("test") on all test classes.
+# Provides stub values for every property that would otherwise require real
+# infrastructure (env vars, OIDC discovery HTTP calls, MySQL, Okta/Auth0 tenant).
+#
+# Key choices:
+#   - No okta.* properties: the Okta Spring Boot Starter is @ConditionalOnProperty
+#     for okta.oauth2.issuer; omitting it prevents the starter from registering an
+#     issuer-uri that triggers Spring's OIDC discovery HTTP call at startup.
+#   - Explicit OAuth2 provider endpoints (no issuer-uri): prevents the Spring
+#     Security OIDC discovery call (GET {issuer}/.well-known/openid-configuration).
+#   - Datasource/JPA auto-configuration excluded: @SpringBootTest uses @MockitoBean
+#     on the repository impls to break the @PersistenceContext dependency chain.
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+  security:
+    oauth2:
+      client:
+        registration:
+          auth0:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid, profile, email
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid, profile, email
+        provider:
+          # Explicit endpoint URIs prevent the OIDC discovery HTTP call
+          # (GET {issuer-uri}/.well-known/openid-configuration) that would normally
+          # fire at context startup when only issuer-uri is provided.
+          # The "okta" provider entry is required because the Okta Spring Boot Starter
+          # activates on okta.oauth2.clientId and registers a "okta" client registration
+          # that needs a provider with a non-empty authorizationUri.
+          okta:
+            authorization-uri: https://test.example.com/authorize
+            token-uri: https://test.example.com/oauth/token
+            jwk-set-uri: https://test.example.com/.well-known/jwks.json
+            user-info-uri: https://test.example.com/userinfo
+            user-name-attribute: sub
+          auth0:
+            authorization-uri: https://test.example.com/authorize
+            token-uri: https://test.example.com/oauth/token
+            jwk-set-uri: https://test.example.com/.well-known/jwks.json
+            user-info-uri: https://test.example.com/userinfo
+            user-name-attribute: sub
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+            user-info-uri: https://openidconnect.googleapis.com/v1/userinfo
+            user-name-attribute: sub
+
+# Stub values for @Value injections in AuthenticationController.
+# okta.oauth2.clientId / clientSecret are injected directly via @Value — they are NOT
+# the Okta Spring Boot Starter's own config. The starter activates only when
+# okta.oauth2.issuer is present, so omitting issuer here keeps the starter as a no-op
+# (no OIDC discovery HTTP call at startup).
+okta:
+  oauth2:
+    clientId: test-client-id
+    clientSecret: test-client-secret
+
+auth0:
+  logout:
+    domain: test.example.com
+    client-id: test-client-id
+    return-to: http://localhost:4200

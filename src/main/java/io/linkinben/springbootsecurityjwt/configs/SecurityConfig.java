@@ -67,6 +67,9 @@ public class SecurityConfig {
                     "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/roles").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/without-role").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users/admin").hasRole("ADMIN")
                 .requestMatchers("/api/roles").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
@@ -79,9 +82,31 @@ public class SecurityConfig {
                 .defaultAuthenticationEntryPointFor(
                     (request, response, e) ->
                         response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"),
-                    request -> request.getServletPath().startsWith("/api/")
+                    // getRequestURI() is set correctly in both MockMvc and real Tomcat (at root context path).
+                    // getServletPath() returns "" in MockMvc, breaking integration test 401 assertions.
+                    request -> request.getRequestURI().startsWith("/api/")
                 )
             )
+            /*
+             * OAuth2 login — Spring Security internals (NOT unit/slice testable).
+             *
+             * What happens here at runtime:
+             *   1. Browser hits GET /oauth2/authorization/auth0
+             *      → OAuth2AuthorizationRequestRedirectFilter (framework) builds the Auth0
+             *        authorization URL and sends the 302. No application code runs.
+             *        Provider: Auth0 tenant dev-cubyp8uiwwf8ldh3.au.auth0.com
+             *        Social connection: google-oauth2 (Google as identity provider via Auth0)
+             *
+             *   2. User authenticates at Google / Auth0 Universal Login.
+             *      Auth0 posts the authorization code back to our registered redirect URI.
+             *      → OAuth2LoginAuthenticationFilter (framework) exchanges the code for tokens
+             *        and constructs the OidcUser principal. No application code runs.
+             *
+             *   3. Spring Security calls our successHandler / failureHandler.
+             *      → These ARE unit-tested in AuthenticationHandlerTest.
+             *        The full callback chain (steps 1–2) requires a live Auth0 tenant and a
+             *        real browser session — verified manually (verification-checklist.md §5.1–5.3).
+             */
             .oauth2Login(oauth -> oauth
                 .successHandler(customAuthHandler.successHandler)
                 .failureHandler(customAuthHandler.failureHandler)
