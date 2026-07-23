@@ -5,10 +5,13 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -22,9 +25,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
+@Slf4j
 @Component
 public class AuthenticationHandler extends SavedRequestAwareAuthenticationSuccessHandler {
-	private ObjectMapper objectMapper = new ObjectMapper();
+	private final ObjectMapper objectMapper = new ObjectMapper()
+			.registerModule(new JavaTimeModule())
+			.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
 	public CustomSuccessHandler successHandler = new CustomSuccessHandler();
 	public CustomFailureHandler failureHandler = new CustomFailureHandler();
@@ -34,7 +40,7 @@ public class AuthenticationHandler extends SavedRequestAwareAuthenticationSucces
 		@Override
 		public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 				Authentication authentication) throws IOException, ServletException {
-			System.out.println("Success");
+			log.info("OAuth2 authentication successful for user: {}", authentication.getName());
 			response.setStatus(HttpStatus.OK.value());
 			Map<String, Object> data = new HashMap<String, Object>();
 			data.put("uId", authentication.getName());
@@ -57,7 +63,7 @@ public class AuthenticationHandler extends SavedRequestAwareAuthenticationSucces
 		@Override
 		public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
 				AuthenticationException exception) throws IOException, ServletException {
-			System.out.println("Failed");
+			log.warn("OAuth2 authentication failed: {}", exception.getMessage());
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 			Map<String, Object> data = new HashMap<String, Object>();
 			data.put("timestamp", Calendar.getInstance().getTime());

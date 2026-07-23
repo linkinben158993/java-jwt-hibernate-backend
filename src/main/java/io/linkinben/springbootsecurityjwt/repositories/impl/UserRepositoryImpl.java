@@ -3,21 +3,20 @@ package io.linkinben.springbootsecurityjwt.repositories.impl;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.CriteriaUpdate;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
-import javax.transaction.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.CriteriaUpdate;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.transaction.Transactional;
 
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
@@ -26,23 +25,23 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.repositories.UserRepository;
 
+@Slf4j
 @Repository
 @Transactional(rollbackOn = Exception.class)
 public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> implements UserRepository {
-    Logger logger = LoggerFactory.getLogger(UserRepositoryImpl.class);
 
 	@PersistenceContext
 	protected EntityManager entityManager;
 
 	@Override
 	public void update(UserInfoDTO user) {
-		Session session = sessionFactory.getCurrentSession();
+		Session session = entityManager.unwrap(Session.class);
 		Users foundUser = this.findById(user.getuId());
 		foundUser.setFullName(user.getFullName() != null ? user.getFullName() : foundUser.getFullName());
 		foundUser.setAge(user.getAge() != null ? user.getAge() : foundUser.getAge());
 		foundUser.setDob(user.getDob() != null ? user.getDob() : foundUser.getDob());
 		try {
-			session.update(foundUser);
+			session.merge(foundUser);
 		} catch (HibernateException e) {
 			e.printStackTrace();
 		}
@@ -51,7 +50,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 
 	@Override
 	public int updatePassword(ChangePasswordDTO changePasswordDTO) {
-		Session session = sessionFactory.getCurrentSession();
+		Session session = entityManager.unwrap(Session.class);
 		String hql = "UPDATE users SET " + "password = :password " + "WHERE email = :email";
 		try {
 			Query<Users> query = session.createQuery(hql, Users.class);
@@ -69,7 +68,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 	public Users findByEmail(String email) {
 		String hql = "FROM users where email = :email";
 		try {
-			Session session = sessionFactory.getCurrentSession();
+			Session session = entityManager.unwrap(Session.class);
 			Query<Users> query = session.createQuery(hql, Users.class);
 			query.setParameter("email", email);
 			return query.getResultList().stream().findFirst().orElse(null);
@@ -91,7 +90,7 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 		cqUser.where(roleIsEmpty);
 		TypedQuery<Users> queryUserWithoutRole = entityManager.createQuery(cqUser.select(rootQueryUsers));
 		List<Users> foundUsers = queryUserWithoutRole.getResultList();
-		logger.info("Found Users: " + foundUsers.size());
+		log.info("Found Users: " + foundUsers.size());
 
 		// Update
 		
@@ -105,12 +104,12 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 //		int result = entityManager.createQuery(cuUsers).executeUpdate();
 //		System.out.println("Update Result: " + result);
 
-		Session session = sessionFactory.getCurrentSession();
+		Session session = entityManager.unwrap(Session.class);
 		for (Users item : foundUsers) {
 			item.setRoles(roles);
 		}
 		try {
-			session.update(foundUsers);
+			for (Users item : foundUsers) { session.merge(item); }
 		} catch (HibernateException e) {
 			e.printStackTrace();
 		}
@@ -118,19 +117,19 @@ public class UserRepositoryImpl extends GenericRepositoryImpl<Users, String> imp
 
 	@Override
 	public void batchUpdateUserRoleHQL(Set<Roles> roles) {
-		Session session = sessionFactory.getCurrentSession();
+		Session session = entityManager.unwrap(Session.class);
 //		Or This:
 //		String hql = "FROM users u left join u.roles r where r.rId is null";
 		String hql = "SELECT u FROM users u LEFT JOIN u.roles r WHERE r.rId IS NULL";
 		try {
 			Query<Users> query = session.createQuery(hql, Users.class);
 			List<Users> foundUsers = query.getResultList();
-			logger.info("Update user size: " + foundUsers.size());
+			log.info("Update user size: " + foundUsers.size());
 			for (Users item : foundUsers) {
 				item.setRoles(roles);
 			}
 			try {
-				session.update(foundUsers);
+				for (Users item : foundUsers) { session.merge(item); }
 			} catch (HibernateException e) {
 				e.printStackTrace();
 			}

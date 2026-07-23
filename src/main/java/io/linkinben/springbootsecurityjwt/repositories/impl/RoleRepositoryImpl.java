@@ -1,6 +1,6 @@
 package io.linkinben.springbootsecurityjwt.repositories.impl;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -22,7 +22,7 @@ public class RoleRepositoryImpl extends GenericRepositoryImpl<Roles, String> imp
 	public Roles findByRoleName(String rName) {
 		String hql = "FROM roles where rName = :rName";
 		try {
-			Session session = sessionFactory.getCurrentSession();
+			Session session = entityManager.unwrap(Session.class);
 			Query<Roles> query = session.createQuery(hql, Roles.class);
 			query.setParameter("rName", rName);
 			return query.getSingleResult();

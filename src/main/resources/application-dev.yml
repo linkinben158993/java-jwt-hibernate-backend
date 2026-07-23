@@ -1,0 +1,69 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/jwt_db?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          # NOTE: This is Auth0 (auth0.com), not classic Okta — Okta redirects free developers to Auth0.
+          # Registration ID changed from 'okta' to 'auth0'; redirect URI is now:
+          #   http://localhost:4201/login/oauth2/code/auth0
+          # Register that URL in Auth0 Dashboard → Applications → your app → Allowed Callback URLs.
+          auth0:
+            client-id: ${OKTA_CLIENT_ID}
+            client-secret: ${OKTA_CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid, profile, email
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid, profile, email
+        provider:
+          # Auth0 OIDC discovery auto-populates all endpoint URLs — no need to list them individually.
+          auth0:
+            issuer-uri: https://dev-cubyp8uiwwf8ldh3.au.auth0.com/
+            user-name-attribute: sub
+          google:
+            issuer-uri: https://accounts.google.com
+            user-name-attribute: sub
+
+# okta-spring-boot-starter legacy properties — pointed at Auth0 issuer.
+# The starter may produce warnings about unrecognised domain format; safe to ignore for dev.
+# Consider removing the starter and relying solely on spring-boot-starter-oauth2-client.
+okta:
+  oauth2:
+    issuer: https://dev-cubyp8uiwwf8ldh3.au.auth0.com/
+    clientId: ${OKTA_CLIENT_ID}
+    clientSecret: ${OKTA_CLIENT_SECRET}
+
+# Auth0 logout — used by POST /api/auth/logout to build the /v2/logout redirect URL.
+# client-id reuses the same env var as the OAuth2 registration above.
+# returnTo must be registered in Auth0 Dashboard → Applications → Allowed Logout URLs.
+auth0:
+  logout:
+    domain: dev-cubyp8uiwwf8ldh3.au.auth0.com
+    client-id: ${OKTA_CLIENT_ID}
+    return-to: http://localhost:4200
+
+# Mail — disabled. Uncomment and set MAIL_USERNAME / MAIL_PASSWORD to enable.
+# spring:
+#   mail:
+#     host: smtp.gmail.com
+#     port: 587
+#     username: ${MAIL_USERNAME}
+#     password: ${MAIL_PASSWORD}
+#     properties:
+#       mail.smtp.auth: true
+#       mail.smtp.connectiontimeout: 5000
+#       mail.smtp.timeout: 5000
+#       mail.smtp.writetimeout: 5000
+#       mail.smtp.socketFactory.port: 465
+#       mail.smtp.socketFactory.class: jakarta.net.ssl.SSLSocketFactory

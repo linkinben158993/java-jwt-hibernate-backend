@@ -2,11 +2,12 @@ package io.linkinben.springbootsecurityjwt.configs;
 
 import java.io.IOException;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,9 +19,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
 
+@Slf4j
 @Component
 public class RequestFilterConfig extends OncePerRequestFilter {
 
@@ -29,6 +33,9 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 
 	@Autowired
 	private UserDetailsServiceImpl userDetailsServiceImpl;
+
+	@Autowired
+	private TokenBlacklistService tokenBlacklistService;
 
 	@Autowired
 	@Qualifier("handlerExceptionResolver")
@@ -43,18 +50,24 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 
 		String username = null;
 		try {
-			// Extract token with correct header and token is expired?
 			if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+				String rawJwt = authorizationHeader.substring(7);
+				if (tokenBlacklistService.isBlacklisted(rawJwt)) {
+					// Don't set auth context — protected endpoints return 401 via AuthenticationEntryPoint;
+					// permitAll endpoints (e.g. /api/auth/logout itself) still pass through.
+					log.debug("Rejected blacklisted token");
+					filterChain.doFilter(request, response);
+					return;
+				}
 				username = jwtUtils.extractSubject(authorizationHeader);
-				System.out.println("Subject: " + username);
+				log.debug("Access token subject: {}", username);
 			}
 
 
 			// Check user details
 			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 				UserDetails userDetails = this.userDetailsServiceImpl.loadUserByUsername(username);
-				System.out.println("User details: " + userDetails.getUsername().toString());
-				System.out.println(userDetails.toString());
+				log.debug("Authenticating user: {}", userDetails.getUsername());
 				if (jwtUtils.validateToken(authorizationHeader, userDetails)) {
 					UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
 							userDetails, null, userDetails.getAuthorities());
@@ -67,15 +80,14 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 			filterChain.doFilter(request, response);
 			
 		} catch (ExpiredJwtException e) {
-			// If refresh token is in request
-			System.out.println("Access Token expired do something!");
+			log.warn("Access token expired, attempting refresh token fallback");
 			String uId = null;
 			// Todo: Do something with refresh token if appended in request headers!
 			if (authorizationHeader != null && isRefreshToken.startsWith("Authorization ")) {
 
 				try {
 					uId = jwtUtils.extractSubject(isRefreshToken);
-					System.out.println("Subject: " + uId);					
+					log.debug("Refresh token subject: {}", uId);
 					authorizeRefreshToken(e, request, uId);
 					filterChain.doFilter(request, response);
 				} catch (ExpiredJwtException e1) {
@@ -83,6 +95,9 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 					resolver.resolveException(request, response, null, e1);
 				}
 			}
+		} catch (JwtException e) {
+			log.warn("Invalid JWT token: {}", e.getMessage());
+			response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
 		}
 	}
 

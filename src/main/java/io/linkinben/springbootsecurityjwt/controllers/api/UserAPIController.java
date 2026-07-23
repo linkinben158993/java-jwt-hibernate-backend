@@ -5,10 +5,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.linkinben.springbootsecurityjwt.entities.Roles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +20,11 @@ import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.utils.EmailUtils;
-import io.swagger.annotations.ApiImplicitParam;
+import lombok.extern.slf4j.Slf4j;
 
-@Controller
-@RequestMapping("api/user")
+@Slf4j
+@RestController
+@RequestMapping("api/users")
 public class UserAPIController {
 
 	@Autowired
@@ -30,8 +32,31 @@ public class UserAPIController {
 
 	// @Autowired EmailUtils emailUtils;
 
+	@RequestMapping(value = "/me", method = RequestMethod.GET)
+	public ResponseEntity<?> getCurrentUser(Principal principal) {
+		Map<String, Object> response = new HashMap<>();
+		try {
+			Users user = userService.findByEmail(principal.getName());
+			String role = user.getRoles().stream()
+					.map(Roles::getrName)
+					.findFirst()
+					.orElse("NO_ROLE");
+			Map<String, Object> data = new HashMap<>();
+			data.put("email", user.getEmail());
+			data.put("fullName", user.getFullName());
+			data.put("role", role);
+			response.put("title", "User profile");
+			response.put("message", "Profile retrieved");
+			response.put("data", data);
+			return new ResponseEntity<>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			log.error("GET /api/users/me failed", e);
+			response.put("message", "Could not retrieve profile");
+			return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+		}
+	}
+
 	@RequestMapping(value = "", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
 	public ResponseEntity<?> findAllUsers() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -48,8 +73,7 @@ public class UserAPIController {
 		}
 	}
 
-	@RequestMapping(value = "/no-role", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@RequestMapping(value = "/without-role", method = RequestMethod.GET)
 	public ResponseEntity<?> findAllUsersWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -67,8 +91,7 @@ public class UserAPIController {
 		}
 	}
 
-	@RequestMapping(value = "/update-role", method = RequestMethod.GET)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@RequestMapping(value = "/roles", method = RequestMethod.GET)
 	public ResponseEntity<?> updateUserWithoutRole() {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -86,8 +109,7 @@ public class UserAPIController {
 		}
 	}
 
-	@RequestMapping(value = "/refer-admin", method = RequestMethod.POST)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@RequestMapping(value = "/admin", method = RequestMethod.POST)
 	public ResponseEntity<?> referAdmin(@RequestBody Users user) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
@@ -96,39 +118,13 @@ public class UserAPIController {
 				response.put("message", "Email has already been used!");
 				response.put("errCode", "ERR_USER_EXIST");
 				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-			}else {
+			} else {
 				userService.add(user, "ROLE_ADMIN");
 				response.put("title", "Create new admin user.");
 				response.put("message", "New admin user add!");
 				response.put("data", user.getEmail());
 				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
-				return new ResponseEntity<Object>(response, HttpStatus.OK);				
-			}
-		} catch (Exception e) {
-			response.put("title", "Request for a new account.");
-			response.put("message", "Something happened!");
-			response.put("errCode", "ERR_SERVER_ERROR");
-			e.printStackTrace();
-			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-	
-	@RequestMapping(value = "/register", method = RequestMethod.POST)
-	public ResponseEntity<?> register(@RequestBody Users user) {
-		Map<String, Object> response = new HashMap<String, Object>();
-		try {
-			if (userService.findByEmail(user.getEmail()) != null) {
-				response.put("title", "Request for a new account.");
-				response.put("message", "Email has already been used!");
-				response.put("errCode", "ERR_USER_EXIST");
-				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-			}else {
-				userService.add(user, "ROLE_USER");
-				response.put("title", "Create new user.");
-				response.put("message", "New user created!");
-				response.put("data", user.getEmail());
-				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
-				return new ResponseEntity<Object>(response, HttpStatus.OK);				
+				return new ResponseEntity<Object>(response, HttpStatus.OK);
 			}
 		} catch (Exception e) {
 			response.put("title", "Request for a new account.");
@@ -139,7 +135,33 @@ public class UserAPIController {
 		}
 	}
 
-	@RequestMapping(value = "/change-password", method = RequestMethod.POST)
+	@RequestMapping(value = "", method = RequestMethod.POST)
+	public ResponseEntity<?> register(@RequestBody Users user) {
+		Map<String, Object> response = new HashMap<String, Object>();
+		try {
+			if (userService.findByEmail(user.getEmail()) != null) {
+				response.put("title", "Request for a new account.");
+				response.put("message", "Email has already been used!");
+				response.put("errCode", "ERR_USER_EXIST");
+				return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
+			} else {
+				userService.add(user, "ROLE_USER");
+				response.put("title", "Create new user.");
+				response.put("message", "New user created!");
+				response.put("data", user.getEmail());
+				// emailUtils.sendSimpleEmail(user.getEmail(), "Whatssup Mother Fucker!");
+				return new ResponseEntity<Object>(response, HttpStatus.OK);
+			}
+		} catch (Exception e) {
+			response.put("title", "Request for a new account.");
+			response.put("message", "Something happened!");
+			response.put("errCode", "ERR_SERVER_ERROR");
+			e.printStackTrace();
+			return new ResponseEntity<Object>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@RequestMapping(value = "/password", method = RequestMethod.PATCH)
 	public ResponseEntity<?> changePassword(@RequestHeader(value = "access_token") String access_token,
 			@RequestBody ChangePasswordDTO user) {
 		Map<String, Object> response = new HashMap<String, Object>();
@@ -157,12 +179,11 @@ public class UserAPIController {
 		}
 	}
 
-	@RequestMapping(value = "/update-info", method = RequestMethod.POST)
-	@ApiImplicitParam(name = "access_token", required = true, allowEmptyValue = false, paramType = "header", dataTypeClass = String.class, example = "Bearer access_token")
+	@RequestMapping(value = "/info", method = RequestMethod.PATCH)
 	public ResponseEntity<?> updateInfo(@RequestBody UserInfoDTO user, Principal principal) {
 		Map<String, Object> response = new HashMap<String, Object>();
 		try {
-			// Principal is current user extract from token
+			// Principal is current user extracted from token
 			if (!userService.findByEmail(principal.getName()).getuId().equals(user.getuId())) {
 				response.put("title", "Request Change Info For: " + user.getFullName());
 				response.put("message", "You are not authorized to edit this user!");

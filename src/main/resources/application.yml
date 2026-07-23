@@ -1,0 +1,16 @@
+server:
+  port: 4201
+
+spring:
+  profiles:
+    active: dev  # override via SPRING_PROFILES_ACTIVE env var (e.g. prod, staging)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect

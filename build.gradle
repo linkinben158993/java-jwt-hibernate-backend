@@ -1,0 +1,184 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+}
+
+group = 'io.linkinben'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+// Spring Boot 3.5.x bundles ASM 9.7 which reads class files up to Java 24 (version 68).
+// Java 26 produces version 70. Target Java 21 (LTS) until a Spring Boot release ships ASM 9.9+.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+repositories {
+    mavenCentral()
+}
+
+// --- Integration-test source set ---
+// sourceSets must come first: it creates integrationTestImplementation / integrationTestRuntimeOnly
+// as side-effects. The configurations block then configures those (already-existing) configurations.
+
+sourceSets {
+    integrationTest {
+        java.srcDirs   = ['src/integration-test/java']
+        resources.srcDirs = ['src/integration-test/resources', 'src/test/resources']
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests (full Spring context, real SecurityFilterChain).'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath       = sourceSets.integrationTest.runtimeClasspath
+    useJUnitPlatform()
+    shouldRunAfter test
+    finalizedBy 'jacocoIntegrationTestReport'
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+        showExceptions true
+        showCauses true
+        showStackTraces true
+    }
+}
+
+check.dependsOn integrationTest
+
+// --- Dependencies ---
+
+dependencies {
+    // spring-orm is required for native Hibernate SessionFactory support (not transitive via data-jpa in SB3)
+    implementation 'org.springframework:spring-orm'
+
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // WebJars (WebSocket UI assets)
+    implementation 'org.webjars:webjars-locator-core'
+    implementation 'org.webjars:sockjs-client:1.0.2'
+    implementation 'org.webjars:stomp-websocket:2.3.3'
+
+    // JWT — split artifacts replace jjwt:0.9.1
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // API documentation — replaces springfox-swagger2
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+
+    // MySQL — new groupId replaces mysql:mysql-connector-java
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // Okta (must be 3.x for Spring Boot 3)
+    implementation 'com.okta.spring:okta-spring-boot-starter:3.0.7'
+
+    // Lombok — @Slf4j and other compile-time annotations
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+// --- JaCoCo coverage ---
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+        showExceptions true
+        showCauses true
+        showStackTraces true
+    }
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}
+
+tasks.register('jacocoIntegrationTestReport', JacocoReport) {
+    dependsOn integrationTest
+    executionData integrationTest
+    sourceSets sourceSets.main
+    reports {
+        html.required = true
+        xml.required = true
+    }
+}
+
+// Unified report: merges unit + integration coverage into one HTML page.
+// Run with: gradlew jacocoCombinedReport
+tasks.register('jacocoCombinedReport', JacocoReport) {
+    dependsOn test, integrationTest
+    executionData test, integrationTest
+    sourceSets sourceSets.main
+    reports {
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/combined')
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/combined/jacoco.xml')
+    }
+}
+
+// --- Packaging ---
+
+bootJar {
+    archiveFileName = "${rootProject.name}-linkinben.jar"
+}
+
+bootRun {
+    // Load .env from project root so 'gradlew bootRun' works without manual $env: exports.
+    // Variables already set in the shell take precedence over .env values.
+    def envFile = rootProject.file('.env')
+    if (envFile.exists()) {
+        envFile.eachLine { line ->
+            def matcher = line =~ /^\s*([^#=][^=]*)=(.*)$/
+            if (matcher.matches()) {
+                def key = matcher[0][1].trim()
+                def value = matcher[0][2].trim()
+                if (!System.getenv(key)) environment key, value
+            }
+        }
+    }
+    // Docker MySQL is exposed on host port 3307; override the default localhost:3306 in application-dev.yml.
+    if (!System.getenv('SPRING_DATASOURCE_URL')) {
+        environment 'SPRING_DATASOURCE_URL',
+            'jdbc:mysql://localhost:3307/jwt_db?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
+    }
+}

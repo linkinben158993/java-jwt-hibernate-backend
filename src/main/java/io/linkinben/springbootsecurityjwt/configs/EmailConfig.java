@@ -2,10 +2,10 @@ package io.linkinben.springbootsecurityjwt.configs;
 
 import java.util.Properties;
 
-import javax.mail.MessagingException;
-import javax.mail.NoSuchProviderException;
-import javax.mail.Session;
-import javax.mail.Store;
+import jakarta.mail.MessagingException;
+import jakarta.mail.NoSuchProviderException;
+import jakarta.mail.Session;
+import jakarta.mail.Store;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
