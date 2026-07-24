@@ -218,6 +218,17 @@ class AuthenticationControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    // --- 10.11b POST /api/auth/oauth2/login malformed credential returns 400 (not 500) ---
+    @Test
+    void oauth2Login_malformedCredential_returns400() throws Exception {
+        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn("not-valid-json{");
+
+        mockMvc.perform(post("/api/auth/oauth2/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
+                .andExpect(status().isBadRequest());
+    }
+
     // --- 10.12 POST /api/auth/oauth2/login repeat call — userService.add() NOT called ---
     @Test
     void oauth2Login_existingUser_doesNotCallAdd() throws Exception {

@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,6 +23,7 @@ import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity   // enables @PreAuthorize (via @CanEditUser) for instance-level ownership/rank rules
 public class SecurityConfig {
 
     @Autowired
@@ -70,6 +72,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/roles").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/users/without-role").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/users/admin").hasRole("ADMIN")
+                // Role assignment: coarse admin gate (defense in depth); method security enforces
+                // the finer "granted role must rank below the caller" rule.
+                .requestMatchers(HttpMethod.PATCH, "/api/users/*/role").hasRole("ADMIN")
+                // Per-user edit/delete: authentication only at the filter; @CanEditUser method
+                // security decides ownership/rank (self-edit must be reachable by non-admins).
+                .requestMatchers(HttpMethod.PATCH, "/api/users/*").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/users/*").authenticated()
                 .requestMatchers("/api/roles").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )

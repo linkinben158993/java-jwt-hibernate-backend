@@ -8,9 +8,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +34,7 @@ import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
@@ -91,103 +94,86 @@ public class AuthenticationController {
 	private String auth0LogoutReturnTo;
 
 	@RequestMapping(value = "/login", method = RequestMethod.POST)
-	public ResponseEntity<?> createAuthJWT(@RequestBody AuthenticationRequest authenticationRequest) {
+	public ResponseEntity<?> createAuthJWT(@Valid @RequestBody AuthenticationRequest authenticationRequest) {
+		// AuthenticationException (e.g. BadCredentialsException) propagates to GlobalExceptionHandler → 400.
+		Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+				authenticationRequest.getUsername(), authenticationRequest.getPassword()));
+		SecurityContextHolder.getContext().setAuthentication(authentication);
+
+		CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
+
+		final String jwt = jwtUtils.genToken(customUserDetails);
+		final String jwt_refresh = jwtUtils.genRefreshToken(customUserDetails);
+		Map<String, Object> userInfo = new HashMap<String, Object>();
+
+		String role = customUserDetails.getAuthorities().stream()
+				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
+		userInfo.put("accessToken", jwt);
+		userInfo.put("refreshToken", jwt_refresh);
+		userInfo.put("uName", customUserDetails.getUsername());
+		userInfo.put("uId", customUserDetails.getuId());
+		userInfo.put("role", role);
+
 		Map<String, Object> response = new HashMap<String, Object>();
-		try {
-			Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-					authenticationRequest.getUsername(), authenticationRequest.getPassword()));
-			SecurityContextHolder.getContext().setAuthentication(authentication);
-
-			CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-
-			final String jwt = jwtUtils.genToken(customUserDetails);
-			final String jwt_refresh = jwtUtils.genRefreshToken(customUserDetails);
-			Map<String, Object> userInfo = new HashMap<String, Object>();
-
-			String role = customUserDetails.getAuthorities().stream()
-					.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
-			userInfo.put("accessToken", jwt);
-			userInfo.put("refreshToken", jwt_refresh);
-			userInfo.put("uName", customUserDetails.getUsername());
-			userInfo.put("uId", customUserDetails.getuId());
-			userInfo.put("role", role);
-
-			response.put("title", "Good Credential!");
-			response.put("message", "Access Granted!");
-			response.put("data", userInfo);
-			AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
-			return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
-
-		} catch (Exception e) {
-			log.error("Login authentication failed", e);
-			response.put("title", "Bad Credential!");
-			response.put("message", "Access Denied!");
-			return new ResponseEntity<Object>(response, HttpStatus.BAD_REQUEST);
-		}
+		response.put("title", "Good Credential!");
+		response.put("message", "Access Granted!");
+		response.put("data", userInfo);
+		return new ResponseEntity<Object>(new AuthenticationResponse(response), HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/oauth2/login", method = RequestMethod.POST)
-	public ResponseEntity<?> loginWithOAuth2Credential(@RequestBody Map<String, String> body) {
-		Map<String, Object> response = new HashMap<>();
-		try {
-			String credential = body.get("credential");
-			String subJson = jwtUtils.extractCredentialSubject(credential);
+	public ResponseEntity<?> loginWithOAuth2Credential(@RequestBody Map<String, String> body)
+			throws JsonProcessingException {
+		String credential = body.get("credential");
+		String subJson = jwtUtils.extractCredentialSubject(credential);
 
-			Map<String, Object> credentialData = objectMapper.readValue(subJson, new TypeReference<>() {});
-			String email = (String) credentialData.get("email");
+		Map<String, Object> credentialData = objectMapper.readValue(subJson, new TypeReference<>() {});
+		String email = (String) credentialData.get("email");
 
-			String fullName = email;
-			Object infoObj = credentialData.get("info");
-			if (infoObj instanceof Map<?, ?> info && info.get("name") instanceof String name) {
-				fullName = name;
-			}
-
-			boolean isAdmin = OAUTH2_ADMIN_EMAILS.contains(email);
-			boolean isUser  = OAUTH2_USER_EMAILS.contains(email);
-			if (!isAdmin && !isUser) {
-				log.warn("OAuth2 login rejected — email not in whitelist: {}", email);
-				response.put("title", "Access Denied!");
-				response.put("message", "This Google account is not authorised.");
-				return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
-			}
-
-			Users existing = userService.findByEmail(email);
-			if (existing == null) {
-				String roleName = isAdmin ? "ROLE_ADMIN" : "ROLE_USER";
-				Users newUser = new Users();
-				newUser.setEmail(email);
-				newUser.setFullName(fullName);
-				newUser.setPassword(UUID.randomUUID().toString());
-				userService.add(newUser, roleName);
-				log.info("Created OAuth2 user: {} with role: {}", email, roleName);
-			} else {
-				log.debug("OAuth2 user already exists: {}", email);
-			}
-
-			CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUsername(email);
-			String accessToken = jwtUtils.genToken(userDetails, "oauth2");
-			String refreshToken = jwtUtils.genRefreshToken(userDetails);
-
-			String role = userDetails.getAuthorities().stream()
-					.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
-			Map<String, Object> userInfo = new HashMap<>();
-			userInfo.put("accessToken", accessToken);
-			userInfo.put("refreshToken", refreshToken);
-			userInfo.put("uName", userDetails.getUsername());
-			userInfo.put("uId", userDetails.getuId());
-			userInfo.put("role", role);
-
-			response.put("title", "Good Credential!");
-			response.put("message", "Access Granted!");
-			response.put("data", userInfo);
-			return new ResponseEntity<>(new AuthenticationResponse(response), HttpStatus.OK);
-
-		} catch (Exception e) {
-			log.error("OAuth2 credential exchange failed", e);
-			response.put("title", "Bad Credential!");
-			response.put("message", "Access Denied!");
-			return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+		String fullName = email;
+		Object infoObj = credentialData.get("info");
+		if (infoObj instanceof Map<?, ?> info && info.get("name") instanceof String name) {
+			fullName = name;
 		}
+
+		boolean isAdmin = OAUTH2_ADMIN_EMAILS.contains(email);
+		boolean isUser  = OAUTH2_USER_EMAILS.contains(email);
+		if (!isAdmin && !isUser) {
+			log.warn("OAuth2 login rejected — email not in whitelist: {}", email);
+			throw new ForbiddenOperationException("This Google account is not authorised.");
+		}
+
+		Users existing = userService.findByEmail(email);
+		if (existing == null) {
+			String roleName = isAdmin ? "ROLE_ADMIN" : "ROLE_USER";
+			Users newUser = new Users();
+			newUser.setEmail(email);
+			newUser.setFullName(fullName);
+			newUser.setPassword(UUID.randomUUID().toString());
+			userService.add(newUser, roleName);
+			log.info("Created OAuth2 user: {} with role: {}", email, roleName);
+		} else {
+			log.debug("OAuth2 user already exists: {}", email);
+		}
+
+		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUsername(email);
+		String accessToken = jwtUtils.genToken(userDetails, "oauth2");
+		String refreshToken = jwtUtils.genRefreshToken(userDetails);
+
+		String role = userDetails.getAuthorities().stream()
+				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
+		Map<String, Object> userInfo = new HashMap<>();
+		userInfo.put("accessToken", accessToken);
+		userInfo.put("refreshToken", refreshToken);
+		userInfo.put("uName", userDetails.getUsername());
+		userInfo.put("uId", userDetails.getuId());
+		userInfo.put("role", role);
+
+		Map<String, Object> response = new HashMap<>();
+		response.put("title", "Good Credential!");
+		response.put("message", "Access Granted!");
+		response.put("data", userInfo);
+		return new ResponseEntity<>(new AuthenticationResponse(response), HttpStatus.OK);
 	}
 
 	@RequestMapping(value = "/logout", method = RequestMethod.POST)

@@ -1,7 +1,7 @@
 HELP.md
 .env
-docs/migration.md
-docs/secrets.md
+docs/migration/migration.md
+docs/security/secrets.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -44,3 +44,19 @@ build/
 mvnw
 
 mvnw.cmd
+
+### Claude workspace state ###
+plans/
+.mcp.json
+
+### Local build state ###
+.gradle/
+bin/
+
+### Credentials & key material ###
+.env.*
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore

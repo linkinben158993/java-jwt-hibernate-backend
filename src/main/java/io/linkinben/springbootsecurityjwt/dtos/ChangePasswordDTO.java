@@ -1,9 +1,13 @@
 package io.linkinben.springbootsecurityjwt.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class ChangePasswordDTO {
 
+	// Email is derived from the authenticated principal, not the body — no constraint.
 	private String email;
 
+	@NotBlank
 	private String password;
 
 	public ChangePasswordDTO(String email, String password) {
