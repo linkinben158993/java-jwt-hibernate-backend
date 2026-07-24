@@ -24,4 +24,7 @@ public interface UserService extends GenericService<Users, String> {
 
 	int editPassword(ChangePasswordDTO changePasswordDTO);
 
+	// Assign a single role to a user (replaces the user's role set)
+	void assignRole(String userId, String roleName);
+
 }

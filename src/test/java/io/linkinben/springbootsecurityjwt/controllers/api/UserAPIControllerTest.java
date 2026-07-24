@@ -1,6 +1,7 @@
 package io.linkinben.springbootsecurityjwt.controllers.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.linkinben.springbootsecurityjwt.authz.UserAuthorizationService;
 import io.linkinben.springbootsecurityjwt.configs.TestSecurityConfig;
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
 import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
@@ -39,6 +40,8 @@ class UserAPIControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockitoBean private UserService userService;
+    // Controller dependency for the ownership/rank endpoints (bean name "authz" for @PreAuthorize SpEL)
+    @MockitoBean(name = "authz") private UserAuthorizationService authz;
     // Required by SecurityConfig (RequestFilterConfig + DaoAuthenticationProvider)
     @MockitoBean private JWTUtils jwtUtils;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
@@ -66,17 +69,28 @@ class UserAPIControllerTest {
                 .andExpect(jsonPath("$.message").value("New user created!"));
     }
 
-    // --- 11.2 POST /api/users duplicate email returns 400 with ERR_USER_EXIST ---
+    // --- 11.2 POST /api/users duplicate email returns 409 (DuplicateResourceException) ---
     @Test
-    void register_duplicateEmail_returns400() throws Exception {
+    void register_duplicateEmail_returns409() throws Exception {
         when(userService.findByEmail(anyString())).thenReturn(existingUser);
 
         mockMvc.perform(post("/api/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(existingUser)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errCode").value("ERR_DUPLICATE"));
+    }
+
+    // --- 11.2b POST /api/users blank body fails @Valid → 400 ERR_VALIDATION ---
+    @Test
+    void register_blankBody_returns400Validation() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errCode").value("ERR_USER_EXIST"));
+                .andExpect(jsonPath("$.errCode").value("ERR_VALIDATION"));
     }
 
     // --- 11.3 GET /api/users ADMIN returns 200 ---
@@ -134,7 +148,6 @@ class UserAPIControllerTest {
 
         mockMvc.perform(patch("/api/users/password")
                         .with(csrf())
-                        .header("access_token", "Bearer some.token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());

@@ -12,7 +12,6 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
 
-import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.springframework.stereotype.Repository;
@@ -35,50 +34,36 @@ public abstract class GenericRepositoryImpl<T, K extends Serializable> implement
         clazz = (Class) paramType.getActualTypeArguments()[0];
     }
 
+    // Propagate instead of swallow: DB/Hibernate errors bubble up to GlobalExceptionHandler (500)
+    // rather than being hidden as null/0. Legitimate "not found" is still a null return from find().
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public List<T> findAll() {
         Session session = entityManager.unwrap(Session.class);
-        try {
-            CriteriaBuilder builder = session.getCriteriaBuilder();
-            CriteriaQuery query = (CriteriaQuery) builder.createQuery(clazz);
-            Root<T> root = (Root<T>) query.from(clazz);
-            query.select(root);
-            Query<T> q = session.createQuery(query);
-            return q.getResultList();
-        } catch (HibernateException e) {
-            e.printStackTrace();
-        }
-        return null;
+        CriteriaBuilder builder = session.getCriteriaBuilder();
+        CriteriaQuery query = (CriteriaQuery) builder.createQuery(clazz);
+        Root<T> root = (Root<T>) query.from(clazz);
+        query.select(root);
+        Query<T> q = session.createQuery(query);
+        return q.getResultList();
     }
 
     public T findById(K id) {
         Session session = entityManager.unwrap(Session.class);
-        try {
-            return session.find(clazz, id);
-        } catch (HibernateException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return session.find(clazz, id);
     }
 
     public void insert(T object) {
         Session session = entityManager.unwrap(Session.class);
-        try {
-            session.merge(object);
-        } catch (HibernateException e) {
-            e.printStackTrace();
-        }
+        session.merge(object);
     }
 
     public int removeById(K id) {
         Session session = entityManager.unwrap(Session.class);
-        try {
-            T object = findById(id);
-            session.remove(object);
-        } catch (HibernateException e) {
-            e.printStackTrace();
-            return 0;
+        T object = findById(id);
+        if (object == null) {
+            return 0; // nothing to delete
         }
+        session.remove(object);
         return 1;
     }
 }

@@ -21,15 +21,11 @@ public class RoleRepositoryImpl extends GenericRepositoryImpl<Roles, String> imp
 	@Override
 	public Roles findByRoleName(String rName) {
 		String hql = "FROM roles where rName = :rName";
-		try {
-			Session session = entityManager.unwrap(Session.class);
-			Query<Roles> query = session.createQuery(hql, Roles.class);
-			query.setParameter("rName", rName);
-			return query.getSingleResult();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
+		Session session = entityManager.unwrap(Session.class);
+		Query<Roles> query = session.createQuery(hql, Roles.class);
+		query.setParameter("rName", rName);
+		// Legitimate "not found" → null; real query/DB errors propagate instead of being swallowed.
+		return query.uniqueResult();
 	}
 
 }

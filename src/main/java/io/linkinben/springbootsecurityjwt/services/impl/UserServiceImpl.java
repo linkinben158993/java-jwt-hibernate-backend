@@ -31,21 +31,14 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 
 	@Override
 	public void add(Users user, String roleName) {
-		try {
-			Set<Roles> ownedRoles = new HashSet<Roles>();
-			Roles role = roleService.findByRoleName(roleName);
-			logger.info(role.getrId());
-			logger.info(role.getrName());
-			ownedRoles.add(role);
-			user.setRoles(ownedRoles);
-			String id = UUID.randomUUID().toString();
-			user.setuId(id);
-			String hashed = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
-			user.setPassword(hashed);
-			userRepository.insert(user);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		// Propagate instead of swallow: a failed insert previously returned silently (fake success).
+		Set<Roles> ownedRoles = new HashSet<Roles>();
+		Roles role = roleService.findByRoleName(roleName);
+		ownedRoles.add(role);
+		user.setRoles(ownedRoles);
+		user.setuId(UUID.randomUUID().toString());
+		user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12)));
+		userRepository.insert(user);
 	}
 
 	@Override
@@ -81,6 +74,19 @@ public class UserServiceImpl extends GenericServiceImpl<Users, String> implement
 			return 1;
 		}
 		return 0;
+	}
+
+	@Override
+	public void assignRole(String userId, String roleName) {
+		Users user = userRepository.findById(userId);
+		if (user == null) {
+			return;
+		}
+		Roles role = roleService.findByRoleName(roleName);
+		Set<Roles> ownedRoles = new HashSet<Roles>();
+		ownedRoles.add(role);
+		user.setRoles(ownedRoles);
+		userRepository.insert(user); // GenericRepositoryImpl.insert = session.merge (upsert)
 	}
 
 	@Override

@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity(name = "roles")
 @Table(name = "roles", uniqueConstraints = { @UniqueConstraint(columnNames = "rId"),
@@ -19,6 +20,7 @@ public class Roles extends GenericEntities<String> {
 	@Column(name = "rId")
 	private String rId;
 
+	@NotBlank
 	@Column(name = "rName", unique = true)
 	private String rName;
 

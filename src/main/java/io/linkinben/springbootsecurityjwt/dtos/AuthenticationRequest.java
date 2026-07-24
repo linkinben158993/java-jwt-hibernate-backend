@@ -2,11 +2,15 @@ package io.linkinben.springbootsecurityjwt.dtos;
 
 import java.io.Serializable;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class AuthenticationRequest implements Serializable{
 	private static final long serialVersionUID = 1L;
 
+	@NotBlank
 	private String username;
 
+	@NotBlank
 	private String password;
 
 	public AuthenticationRequest() {

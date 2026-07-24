@@ -6,13 +6,12 @@ import jakarta.validation.constraints.NotBlank;
 
 public class UserInfoDTO {
 
-	@NotBlank
+	// uId comes from the path/principal, never trusted from the body — no constraint.
 	private String uId;
 	@NotBlank
 	private String fullName;
-	@NotBlank
+	// Optional profile fields on a partial (PATCH) update.
 	private Integer age;
-	@NotBlank
 	private Date dob;
 
 	public UserInfoDTO() {
