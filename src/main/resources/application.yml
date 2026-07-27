@@ -1,6 +1,13 @@
 server:
   port: 4201
 
+# JWT signing secrets (G10). No default here → any environment without these env vars fails fast at
+# startup. The ONLY fallback is application-local.yml (activated by bootRun). Generate with:
+#   openssl rand -base64 48
+jwt:
+  access-secret: ${JWT_ACCESS_SECRET}
+  credential-secret: ${JWT_CREDENTIAL_SECRET}
+
 spring:
   profiles:
     active: dev  # override via SPRING_PROFILES_ACTIVE env var (e.g. prod, staging)

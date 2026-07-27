@@ -6,7 +6,7 @@ import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -30,7 +30,7 @@ class RoleAPIControllerTest {
     @Autowired private ObjectMapper objectMapper;
     @MockitoBean private RoleService roleService;
     // Required by SecurityConfig (RequestFilterConfig + DaoAuthenticationProvider)
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
     @MockitoBean private UserDetailsServiceImpl userDetailsServiceImpl;
 

@@ -11,6 +11,11 @@
 #   - Datasource/JPA auto-configuration excluded: @SpringBootTest uses @MockitoBean
 #     on the repository impls to break the @PersistenceContext dependency chain.
 
+# Static test secrets (>= 32 bytes) so tests need no env vars.
+jwt:
+  access-secret: test-access-secret-0123456789-abcdefghijklmnop
+  credential-secret: test-credential-secret-0123456789-abcdefghijklmnop
+
 spring:
   autoconfigure:
     exclude:

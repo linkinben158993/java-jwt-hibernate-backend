@@ -14,11 +14,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import io.linkinben.springbootsecurityjwt.dtos.ErrorResponse;
 import io.linkinben.springbootsecurityjwt.exceptions.BadRequestException;
 import io.linkinben.springbootsecurityjwt.exceptions.DuplicateResourceException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
 import io.linkinben.springbootsecurityjwt.exceptions.ResourceNotFoundException;
+import io.linkinben.springbootsecurityjwt.exceptions.UnauthorizedException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -66,10 +68,21 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Bad Credential!", "Access Denied!", "ERR_BAD_CREDENTIAL");
     }
 
-    // Reachable from the JWT filter via HandlerExceptionResolver (RequestFilterConfig).
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException e) {
+        return build(HttpStatus.UNAUTHORIZED, "Unauthorized", e.getMessage(), "ERR_UNAUTHORIZED");
+    }
+
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<ErrorResponse> handleExpired(ExpiredJwtException e) {
-        return build(HttpStatus.UNAUTHORIZED, "Bad token", "Access token expired", "ERR_TOKEN_EXPIRED");
+        return build(HttpStatus.UNAUTHORIZED, "Bad token", "Token expired", "ERR_TOKEN_EXPIRED");
+    }
+
+    // Any other JWT validation failure (malformed/signature) — e.g. a bad refresh token → 401.
+    // (ExpiredJwtException is a subclass; its more specific handler above wins for expiry.)
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ErrorResponse> handleJwt(JwtException e) {
+        return build(HttpStatus.UNAUTHORIZED, "Bad token", "Invalid token", "ERR_INVALID_TOKEN");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

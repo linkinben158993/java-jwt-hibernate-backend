@@ -11,6 +11,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 
 import java.util.Map;
 
@@ -58,6 +61,12 @@ class AuthenticationHandlerTest {
     @BeforeEach
     void setUp() {
         authenticationHandler = new AuthenticationHandler();
+        // Inject a JwtService with test secrets + built keys (mirrors Spring @Value + @PostConstruct).
+        JwtService jwtService = new JwtService();
+        ReflectionTestUtils.setField(jwtService, "accessSecret", "test-access-secret-0123456789-abcdefghijklmnop");
+        ReflectionTestUtils.setField(jwtService, "credentialSecret", "test-credential-secret-0123456789-abcdefghijklmnop");
+        jwtService.initKeys();
+        ReflectionTestUtils.setField(authenticationHandler, "jwtService", jwtService);
         successHandler = authenticationHandler.successHandler;
         failureHandler = authenticationHandler.failureHandler;
     }

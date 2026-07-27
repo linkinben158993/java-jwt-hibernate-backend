@@ -6,7 +6,7 @@ import io.linkinben.springbootsecurityjwt.repositories.impl.UserRepositoryImpl;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserService;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -40,13 +40,13 @@ class ExpiredTokenNoRefreshIT {
     @MockitoBean private UserService userService;
     @MockitoBean private RoleService roleService;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
 
     @Test
     void expiredAccessToken_noRefreshHeader_returns401NotServerError() throws Exception {
         // Simulate the token filter seeing an expired access token.
         when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
-        when(jwtUtils.extractSubject(anyString()))
+        when(jwtService.extractSubject(anyString()))
                 .thenThrow(new ExpiredJwtException(null, null, "expired"));
 
         mockMvc.perform(get("/api/users")

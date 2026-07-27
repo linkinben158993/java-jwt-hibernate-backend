@@ -1,7 +1,6 @@
-package io.linkinben.springbootsecurityjwt.utils;
+package io.linkinben.springbootsecurityjwt.services;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,7 +8,9 @@ import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -21,25 +22,38 @@ import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 
 @Slf4j
 @Service
-public class JWTUtils {
+public class JwtService {
 
-    // Minimum 32 bytes required for HS256 — replace with a secure secret via env var before deploying
-    private final String SECRET_KEY = "AnJWT";
-    private final String SECRET_CREDENTIAL = "HelloWorld";
+    // Secrets are sourced from config/env (G10). No hardcoded fallback here — the only fallback
+    // lives in the `local` profile (bootRun); every other environment fails fast if these are absent.
+    @Value("${jwt.access-secret}")
+    private String accessSecret;
+    @Value("${jwt.credential-secret}")
+    private String credentialSecret;
 
     // Expire of 10 hours
     private final int EXPIRATION = 10 * 1000 * 60 * 60;
     // Expire of 7 days
     private final int EXPIRATION_REFRESH = 7 * 24 * 1000 * 60 * 60;
 
-    private SecretKey toKey(String secret) {
-        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length < 32) bytes = Arrays.copyOf(bytes, 32);
-        return Keys.hmacShaKeyFor(bytes);
+    private SecretKey signingKey;
+    private SecretKey credentialKey;
+
+    // Field initializers run before @Value injection, so keys are built here once secrets are set.
+    @PostConstruct
+    public void initKeys() {
+        signingKey = toKey(accessSecret);
+        credentialKey = toKey(credentialSecret);
     }
 
-    private final SecretKey signingKey = toKey(SECRET_KEY);
-    private final SecretKey credentialKey = toKey(SECRET_CREDENTIAL);
+    // HS256 requires >= 32 bytes (256 bits). Fail fast on a weak/short secret rather than padding it.
+    private SecretKey toKey(String secret) {
+        byte[] bytes = secret == null ? new byte[0] : secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 bytes (256 bits) for HS256");
+        }
+        return Keys.hmacShaKeyFor(bytes);
+    }
 
     public String extractSubject(String token) {
         return extractClaim(token, Claims::getSubject);

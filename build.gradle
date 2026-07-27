@@ -181,4 +181,9 @@ bootRun {
         environment 'SPRING_DATASOURCE_URL',
             'jdbc:mysql://localhost:3307/jwt_db?createDatabaseIfNotExist=true&autoReconnect=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
     }
+    // Activate the 'local' profile alongside 'dev' so JWT secrets fall back to application-local.yml
+    // for local runs (G10). dev supplies datasource/oauth2 from .env; local supplies the JWT fallbacks.
+    if (!System.getenv('SPRING_PROFILES_ACTIVE')) {
+        environment 'SPRING_PROFILES_ACTIVE', 'dev,local'
+    }
 }
