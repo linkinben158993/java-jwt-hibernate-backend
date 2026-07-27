@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -23,7 +24,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 
 @Slf4j
 @Component
@@ -31,6 +32,11 @@ public class AuthenticationHandler extends SavedRequestAwareAuthenticationSucces
 	private final ObjectMapper objectMapper = new ObjectMapper()
 			.registerModule(new JavaTimeModule())
 			.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+	// Use the Spring-managed JwtService (secrets injected + keys built in @PostConstruct).
+	// A manual `new JwtService()` here would have null keys since G10 externalized the secrets.
+	@Autowired
+	private JwtService jwtService;
 
 	public CustomSuccessHandler successHandler = new CustomSuccessHandler();
 	public CustomFailureHandler failureHandler = new CustomFailureHandler();
@@ -50,10 +56,9 @@ public class AuthenticationHandler extends SavedRequestAwareAuthenticationSucces
 			data.put("info", info);
 			data.put("timestamp", Calendar.getInstance().getTime());
 
-			JWTUtils jwtUtils = new JWTUtils();
 //			response.getOutputStream().println(objectMapper.writeValueAsString(data));
 			response.sendRedirect("http://localhost:4200/login/"
-					+ jwtUtils.genCredentialToken(objectMapper.writeValueAsString(data)));
+					+ jwtService.genCredentialToken(objectMapper.writeValueAsString(data)));
 		}
 
 	}

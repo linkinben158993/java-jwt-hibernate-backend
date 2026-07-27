@@ -7,7 +7,7 @@ import io.linkinben.springbootsecurityjwt.repositories.impl.UserRepositoryImpl;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserService;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -40,16 +40,16 @@ class MalformedRefreshTokenIT {
     @MockitoBean private UserService userService;
     @MockitoBean private RoleService roleService;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
 
     @Test
     void expiredAccessToken_malformedRefreshToken_returns401NotServerError() throws Exception {
         when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
         // Access token is expired → filter enters the refresh fallback branch.
-        when(jwtUtils.extractSubject("Bearer expired.access.token"))
+        when(jwtService.extractSubject("Bearer expired.access.token"))
                 .thenThrow(new ExpiredJwtException(null, null, "expired"));
         // Refresh token is present + "Authorization "-prefixed but garbage → parsing throws.
-        when(jwtUtils.extractSubject("Authorization not-a-jwt"))
+        when(jwtService.extractSubject("Authorization not-a-jwt"))
                 .thenThrow(new MalformedJwtException("Invalid compact JWT string"));
 
         mockMvc.perform(get("/api/users")

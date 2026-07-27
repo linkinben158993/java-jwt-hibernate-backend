@@ -18,7 +18,7 @@ import java.util.Map;
 public class TokenBlacklistService {
 
     // rawJwt → expiration timestamp (ms since epoch).
-    // Cleanup criterion: if expiresAt < now, the token would already be rejected by JWTUtils as expired,
+    // Cleanup criterion: if expiresAt < now, the token would already be rejected by JwtService as expired,
     // so the blacklist entry is no longer needed and can be removed safely.
     private final Map<String, Long> blacklist = Collections.synchronizedMap(new HashMap<>());
 

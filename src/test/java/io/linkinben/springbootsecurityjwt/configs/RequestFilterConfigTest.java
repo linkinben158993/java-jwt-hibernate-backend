@@ -3,7 +3,7 @@ package io.linkinben.springbootsecurityjwt.configs;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.util.List;
 
@@ -28,10 +27,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RequestFilterConfigTest {
 
-    @Mock private JWTUtils jwtUtils;
+    @Mock private JwtService jwtService;
     @Mock private UserDetailsServiceImpl userDetailsServiceImpl;
     @Mock private TokenBlacklistService tokenBlacklistService;
-    @Mock private HandlerExceptionResolver resolver;
     @Mock private HttpServletRequest request;
     @Mock private HttpServletResponse response;
     @Mock private FilterChain filterChain;
@@ -64,9 +62,9 @@ class RequestFilterConfigTest {
     void validBearerToken_populatesSecurityContext() throws Exception {
         when(request.getHeader("access_token")).thenReturn("Bearer valid.jwt.token");
         when(tokenBlacklistService.isBlacklisted("valid.jwt.token")).thenReturn(false);
-        when(jwtUtils.extractSubject("Bearer valid.jwt.token")).thenReturn("test@example.com");
+        when(jwtService.extractSubject("Bearer valid.jwt.token")).thenReturn("test@example.com");
         when(userDetailsServiceImpl.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-        when(jwtUtils.validateToken("Bearer valid.jwt.token", userDetails)).thenReturn(true);
+        when(jwtService.validateToken("Bearer valid.jwt.token", userDetails)).thenReturn(true);
 
         filter.doFilterInternal(request, response, filterChain);
 
@@ -86,7 +84,7 @@ class RequestFilterConfigTest {
 
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(filterChain).doFilter(request, response);
-        verify(jwtUtils, never()).extractSubject(anyString());
+        verify(jwtService, never()).extractSubject(anyString());
     }
 
     // --- 3.4 tampered token — JwtException caught, 401 sent ---
@@ -94,7 +92,7 @@ class RequestFilterConfigTest {
     void tamperedToken_jwtException_sends401() throws Exception {
         when(request.getHeader("access_token")).thenReturn("Bearer tampered.token");
         when(tokenBlacklistService.isBlacklisted("tampered.token")).thenReturn(false);
-        when(jwtUtils.extractSubject("Bearer tampered.token"))
+        when(jwtService.extractSubject("Bearer tampered.token"))
                 .thenThrow(new JwtException("invalid signature"));
 
         filter.doFilterInternal(request, response, filterChain);
@@ -103,22 +101,18 @@ class RequestFilterConfigTest {
         verify(filterChain, never()).doFilter(any(), any());
     }
 
-    // --- 3.5 expired access token + valid refresh token — context set via uId ---
+    // --- 3.5 expired access token → 401, context not set (G14: refresh now via /api/auth/token/refresh) ---
     @Test
-    void expiredAccessToken_validRefreshToken_contexSetViaUid() throws Exception {
-        io.jsonwebtoken.ExpiredJwtException expiredEx =
-                new io.jsonwebtoken.ExpiredJwtException(null, null, "Access Token Expired!");
-
+    void expiredAccessToken_sends401_contextNotSet() throws Exception {
         when(request.getHeader("access_token")).thenReturn("Bearer expired.token");
-        when(request.getHeader("refresh_token")).thenReturn("Authorization valid.refresh");
         when(tokenBlacklistService.isBlacklisted("expired.token")).thenReturn(false);
-        when(jwtUtils.extractSubject("Bearer expired.token")).thenThrow(expiredEx);
-        when(jwtUtils.extractSubject("Authorization valid.refresh")).thenReturn("uid-123");
-        when(userDetailsServiceImpl.loadUserByUserId("uid-123")).thenReturn(userDetails);
+        when(jwtService.extractSubject("Bearer expired.token"))
+                .thenThrow(new io.jsonwebtoken.ExpiredJwtException(null, null, "Access Token Expired!"));
 
         filter.doFilterInternal(request, response, filterChain);
 
-        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
-        verify(filterChain).doFilter(request, response);
+        verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Access token expired");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(filterChain, never()).doFilter(any(), any());
     }
 }

@@ -34,11 +34,13 @@ import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.exceptions.BadRequestException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
+import io.linkinben.springbootsecurityjwt.exceptions.UnauthorizedException;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 
 @Slf4j
 @RestController
@@ -64,7 +66,7 @@ public class AuthenticationController {
 	private AuthenticationManager authenticationManager;
 
 	@Autowired
-	private JWTUtils jwtUtils;
+	private JwtService jwtService;
 
 	@Autowired
 	private UserService userService;
@@ -102,8 +104,8 @@ public class AuthenticationController {
 
 		CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
 
-		final String jwt = jwtUtils.genToken(customUserDetails);
-		final String jwt_refresh = jwtUtils.genRefreshToken(customUserDetails);
+		final String jwt = jwtService.genToken(customUserDetails);
+		final String jwt_refresh = jwtService.genRefreshToken(customUserDetails);
 		Map<String, Object> userInfo = new HashMap<String, Object>();
 
 		String role = customUserDetails.getAuthorities().stream()
@@ -125,7 +127,7 @@ public class AuthenticationController {
 	public ResponseEntity<?> loginWithOAuth2Credential(@RequestBody Map<String, String> body)
 			throws JsonProcessingException {
 		String credential = body.get("credential");
-		String subJson = jwtUtils.extractCredentialSubject(credential);
+		String subJson = jwtService.extractCredentialSubject(credential);
 
 		Map<String, Object> credentialData = objectMapper.readValue(subJson, new TypeReference<>() {});
 		String email = (String) credentialData.get("email");
@@ -157,8 +159,8 @@ public class AuthenticationController {
 		}
 
 		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUsername(email);
-		String accessToken = jwtUtils.genToken(userDetails, "oauth2");
-		String refreshToken = jwtUtils.genRefreshToken(userDetails);
+		String accessToken = jwtService.genToken(userDetails, "oauth2");
+		String refreshToken = jwtService.genRefreshToken(userDetails, "oauth2");
 
 		String role = userDetails.getAuthorities().stream()
 				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
@@ -183,9 +185,9 @@ public class AuthenticationController {
 		if (header != null && header.startsWith("Bearer ")) {
 			String rawJwt = header.substring(7);
 			try {
-				long expiresAtMs = jwtUtils.extractExpiration(header).getTime();
+				long expiresAtMs = jwtService.extractExpiration(header).getTime();
 				tokenBlacklistService.add(rawJwt, expiresAtMs);
-				String loginMethod = jwtUtils.extractLoginMethod(header);
+				String loginMethod = jwtService.extractLoginMethod(header);
 				if ("oauth2".equals(loginMethod)) {
 					String returnTo = URLEncoder.encode(auth0LogoutReturnTo, StandardCharsets.UTF_8);
 					String auth0LogoutUrl = String.format(
@@ -228,13 +230,36 @@ public class AuthenticationController {
 		return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
 	}
 
-	@RequestMapping(value = "/token/refresh", method = RequestMethod.GET)
-	public ResponseEntity<?> refreshToken(@RequestBody AuthenticationRequest authenticationRequest) {
+	// G14: exchange a valid refresh token for a fresh access token. Stateless — verify signature +
+	// expiry, blacklist-check, then reissue. Errors surface as domain/JWT exceptions → 400/401.
+	@RequestMapping(value = "/token/refresh", method = RequestMethod.POST)
+	public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+		String header = request.getHeader("refresh_token");
+		if (header == null || !header.startsWith("Bearer ")) {
+			throw new BadRequestException("Missing or malformed refresh_token header");
+		}
+		String rawJwt = header.substring(7);
+		if (tokenBlacklistService.isBlacklisted(rawJwt)) {
+			throw new UnauthorizedException("Refresh token is no longer valid");
+		}
+		// Verify signature + not-expired; a refresh token's subject is the uId. Throws → 401 via advice.
+		String uId = jwtService.extractSubject(header);
+		// Preserve the original login method (oauth2 vs password) so logout can still tear down Auth0.
+		String loginMethod = jwtService.extractLoginMethod(header);
+		if (loginMethod == null) {
+			loginMethod = "password";
+		}
+		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUserId(uId);
+
+		Map<String, Object> data = new HashMap<String, Object>();
+		data.put("accessToken", jwtService.genToken(userDetails, loginMethod));
+		data.put("uName", userDetails.getUsername());
+		data.put("uId", userDetails.getuId());
+
 		Map<String, Object> response = new HashMap<String, Object>();
 		response.put("title", "Good Credential!");
 		response.put("message", "Access Granted!");
-		response.put("data", "Motherfucker!");
-		AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
-		return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
+		response.put("data", data);
+		return new ResponseEntity<Object>(new AuthenticationResponse(response), HttpStatus.OK);
 	}
 }

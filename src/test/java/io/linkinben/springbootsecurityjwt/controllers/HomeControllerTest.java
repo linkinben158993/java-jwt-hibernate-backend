@@ -2,7 +2,7 @@ package io.linkinben.springbootsecurityjwt.controllers;
 
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import io.linkinben.springbootsecurityjwt.configs.TestSecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +23,7 @@ class HomeControllerTest {
 
     @Autowired private MockMvc mockMvc;
     // Required by SecurityConfig (RequestFilterConfig + DaoAuthenticationProvider)
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
     @MockitoBean private UserDetailsServiceImpl userDetailsServiceImpl;
 

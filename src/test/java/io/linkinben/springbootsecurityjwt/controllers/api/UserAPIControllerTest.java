@@ -10,7 +10,7 @@ import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +43,7 @@ class UserAPIControllerTest {
     // Controller dependency for the ownership/rank endpoints (bean name "authz" for @PreAuthorize SpEL)
     @MockitoBean(name = "authz") private UserAuthorizationService authz;
     // Required by SecurityConfig (RequestFilterConfig + DaoAuthenticationProvider)
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
     @MockitoBean private UserDetailsServiceImpl userDetailsServiceImpl;
 

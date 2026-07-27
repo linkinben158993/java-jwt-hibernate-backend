@@ -8,7 +8,7 @@ import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
-import io.linkinben.springbootsecurityjwt.utils.JWTUtils;
+import io.linkinben.springbootsecurityjwt.services.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +43,7 @@ class AuthenticationControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private AuthenticationManager authenticationManager;
-    @MockitoBean private JWTUtils jwtUtils;
+    @MockitoBean private JwtService jwtService;
     @MockitoBean private UserService userService;
     @MockitoBean private UserDetailsServiceImpl userDetailsServiceImpl;
     @MockitoBean private TokenBlacklistService tokenBlacklistService;
@@ -68,8 +68,8 @@ class AuthenticationControllerTest {
     void login_validCredentials_returns200WithTokenFields() throws Exception {
         when(authenticationManager.authenticate(any()))
                 .thenReturn(new UsernamePasswordAuthenticationToken(adminDetails, null, adminDetails.getAuthorities()));
-        when(jwtUtils.genToken(any(CustomUserDetails.class))).thenReturn("access.token");
-        when(jwtUtils.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh.token");
+        when(jwtService.genToken(any(CustomUserDetails.class))).thenReturn("access.token");
+        when(jwtService.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh.token");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,8 +98,8 @@ class AuthenticationControllerTest {
     void login_adminUser_returnsRoleAdmin() throws Exception {
         when(authenticationManager.authenticate(any()))
                 .thenReturn(new UsernamePasswordAuthenticationToken(adminDetails, null, adminDetails.getAuthorities()));
-        when(jwtUtils.genToken(any(CustomUserDetails.class))).thenReturn("token");
-        when(jwtUtils.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh");
+        when(jwtService.genToken(any(CustomUserDetails.class))).thenReturn("token");
+        when(jwtService.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -113,8 +113,8 @@ class AuthenticationControllerTest {
     void login_regularUser_returnsRoleUser() throws Exception {
         when(authenticationManager.authenticate(any()))
                 .thenReturn(new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
-        when(jwtUtils.genToken(any(CustomUserDetails.class))).thenReturn("token");
-        when(jwtUtils.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh");
+        when(jwtService.genToken(any(CustomUserDetails.class))).thenReturn("token");
+        when(jwtService.genRefreshToken(any(CustomUserDetails.class))).thenReturn("refresh");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -147,8 +147,8 @@ class AuthenticationControllerTest {
     @Test
     void logout_passwordToken_blacklistsAndNoAuth0Url() throws Exception {
         String rawJwt = "password.jwt.token";
-        when(jwtUtils.extractExpiration("Bearer " + rawJwt)).thenReturn(new Date(System.currentTimeMillis() + 60_000));
-        when(jwtUtils.extractLoginMethod("Bearer " + rawJwt)).thenReturn("password");
+        when(jwtService.extractExpiration("Bearer " + rawJwt)).thenReturn(new Date(System.currentTimeMillis() + 60_000));
+        when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("password");
 
         mockMvc.perform(post("/api/auth/logout")
                         .header("access_token", "Bearer " + rawJwt))
@@ -162,8 +162,8 @@ class AuthenticationControllerTest {
     @Test
     void logout_oauth2Token_returnsAuth0LogoutUrl() throws Exception {
         String rawJwt = "oauth2.jwt.token";
-        when(jwtUtils.extractExpiration("Bearer " + rawJwt)).thenReturn(new Date(System.currentTimeMillis() + 60_000));
-        when(jwtUtils.extractLoginMethod("Bearer " + rawJwt)).thenReturn("oauth2");
+        when(jwtService.extractExpiration("Bearer " + rawJwt)).thenReturn(new Date(System.currentTimeMillis() + 60_000));
+        when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("oauth2");
 
         mockMvc.perform(post("/api/auth/logout")
                         .header("access_token", "Bearer " + rawJwt))
@@ -176,11 +176,11 @@ class AuthenticationControllerTest {
     @Test
     void oauth2Login_whitelistedAdminEmail_returns200WithAdminRole() throws Exception {
         String credentialPayload = buildFakeCredential("thienan.nguyenhoang311@gmail.com", "Admin");
-        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
+        when(jwtService.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
         when(userService.findByEmail("thienan.nguyenhoang311@gmail.com")).thenReturn(null);
         when(userDetailsServiceImpl.loadUserByUsername("thienan.nguyenhoang311@gmail.com")).thenReturn(adminDetails);
-        when(jwtUtils.genToken(any(), eq("oauth2"))).thenReturn("oauth2.access.token");
-        when(jwtUtils.genRefreshToken(any())).thenReturn("refresh.token");
+        when(jwtService.genToken(any(), eq("oauth2"))).thenReturn("oauth2.access.token");
+        when(jwtService.genRefreshToken(any())).thenReturn("refresh.token");
 
         mockMvc.perform(post("/api/auth/oauth2/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -193,11 +193,11 @@ class AuthenticationControllerTest {
     @Test
     void oauth2Login_whitelistedUserEmail_returns200WithUserRole() throws Exception {
         String credentialPayload = buildFakeCredential("thienan.nguyenhoang.411@gmail.com", "Regular");
-        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
+        when(jwtService.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
         when(userService.findByEmail("thienan.nguyenhoang.411@gmail.com")).thenReturn(null);
         when(userDetailsServiceImpl.loadUserByUsername("thienan.nguyenhoang.411@gmail.com")).thenReturn(userDetails);
-        when(jwtUtils.genToken(any(), eq("oauth2"))).thenReturn("oauth2.access.token");
-        when(jwtUtils.genRefreshToken(any())).thenReturn("refresh.token");
+        when(jwtService.genToken(any(), eq("oauth2"))).thenReturn("oauth2.access.token");
+        when(jwtService.genRefreshToken(any())).thenReturn("refresh.token");
 
         mockMvc.perform(post("/api/auth/oauth2/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -210,7 +210,7 @@ class AuthenticationControllerTest {
     @Test
     void oauth2Login_nonWhitelistedEmail_returns403() throws Exception {
         String credentialPayload = buildFakeCredential("stranger@example.com", "Stranger");
-        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
+        when(jwtService.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
 
         mockMvc.perform(post("/api/auth/oauth2/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -221,7 +221,7 @@ class AuthenticationControllerTest {
     // --- 10.11b POST /api/auth/oauth2/login malformed credential returns 400 (not 500) ---
     @Test
     void oauth2Login_malformedCredential_returns400() throws Exception {
-        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn("not-valid-json{");
+        when(jwtService.extractCredentialSubject(anyString())).thenReturn("not-valid-json{");
 
         mockMvc.perform(post("/api/auth/oauth2/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -234,11 +234,11 @@ class AuthenticationControllerTest {
     void oauth2Login_existingUser_doesNotCallAdd() throws Exception {
         Users existing = new Users("uid-existing", "thienan.nguyenhoang311@gmail.com", "Admin", "pw");
         String credentialPayload = buildFakeCredential("thienan.nguyenhoang311@gmail.com", "Admin");
-        when(jwtUtils.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
+        when(jwtService.extractCredentialSubject(anyString())).thenReturn(credentialPayload);
         when(userService.findByEmail("thienan.nguyenhoang311@gmail.com")).thenReturn(existing);
         when(userDetailsServiceImpl.loadUserByUsername("thienan.nguyenhoang311@gmail.com")).thenReturn(adminDetails);
-        when(jwtUtils.genToken(any(), eq("oauth2"))).thenReturn("token");
-        when(jwtUtils.genRefreshToken(any())).thenReturn("refresh");
+        when(jwtService.genToken(any(), eq("oauth2"))).thenReturn("token");
+        when(jwtService.genRefreshToken(any())).thenReturn("refresh");
 
         mockMvc.perform(post("/api/auth/oauth2/login")
                         .contentType(MediaType.APPLICATION_JSON)
