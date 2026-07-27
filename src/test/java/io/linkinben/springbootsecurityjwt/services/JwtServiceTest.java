@@ -92,6 +92,13 @@ class JwtServiceTest {
         assertThat(jwtService.extractSubject("Authorization " + refreshToken)).isEqualTo("uid-123");
     }
 
+    // --- 1.7b genRefreshToken carries the loginMethod claim (preserved across refresh) ---
+    @Test
+    void genRefreshToken_withLoginMethod_carriesItInClaims() {
+        String refreshToken = jwtService.genRefreshToken(userDetails, "oauth2");
+        assertThat(jwtService.extractLoginMethod("Bearer " + refreshToken)).isEqualTo("oauth2");
+    }
+
     // --- 1.8 genCredentialToken round-trips via extractCredentialSubject ---
     @Test
     void genCredentialToken_roundTrip_extractsOriginalSubject() {

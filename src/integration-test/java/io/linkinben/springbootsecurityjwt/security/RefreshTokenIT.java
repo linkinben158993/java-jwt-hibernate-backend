@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -53,12 +54,27 @@ class RefreshTokenIT {
         when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
         when(jwtService.extractSubject("Bearer valid.refresh.jwt")).thenReturn("uid-123");
         when(userDetailsServiceImpl.loadUserByUserId("uid-123")).thenReturn(user());
-        when(jwtService.genToken(any())).thenReturn("new.access.token");
+        when(jwtService.genToken(any(), any())).thenReturn("new.access.token");
 
         mockMvc.perform(post("/api/auth/token/refresh")
                         .header("refresh_token", "Bearer valid.refresh.jwt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.response.data.accessToken").value("new.access.token"));
+    }
+
+    @Test
+    void refresh_preservesOauth2LoginMethod() throws Exception {
+        when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
+        when(jwtService.extractSubject("Bearer oauth2.refresh.jwt")).thenReturn("uid-123");
+        when(jwtService.extractLoginMethod("Bearer oauth2.refresh.jwt")).thenReturn("oauth2");
+        when(userDetailsServiceImpl.loadUserByUserId("uid-123")).thenReturn(user());
+        when(jwtService.genToken(any(), eq("oauth2"))).thenReturn("new.oauth2.access");
+
+        // The reissued access token must keep loginMethod=oauth2 so logout can still tear down Auth0.
+        mockMvc.perform(post("/api/auth/token/refresh")
+                        .header("refresh_token", "Bearer oauth2.refresh.jwt"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.response.data.accessToken").value("new.oauth2.access"));
     }
 
     @Test

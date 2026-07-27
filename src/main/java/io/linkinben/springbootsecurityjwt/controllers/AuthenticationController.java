@@ -160,7 +160,7 @@ public class AuthenticationController {
 
 		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUsername(email);
 		String accessToken = jwtService.genToken(userDetails, "oauth2");
-		String refreshToken = jwtService.genRefreshToken(userDetails);
+		String refreshToken = jwtService.genRefreshToken(userDetails, "oauth2");
 
 		String role = userDetails.getAuthorities().stream()
 				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
@@ -244,10 +244,15 @@ public class AuthenticationController {
 		}
 		// Verify signature + not-expired; a refresh token's subject is the uId. Throws → 401 via advice.
 		String uId = jwtService.extractSubject(header);
+		// Preserve the original login method (oauth2 vs password) so logout can still tear down Auth0.
+		String loginMethod = jwtService.extractLoginMethod(header);
+		if (loginMethod == null) {
+			loginMethod = "password";
+		}
 		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUserId(uId);
 
 		Map<String, Object> data = new HashMap<String, Object>();
-		data.put("accessToken", jwtService.genToken(userDetails));
+		data.put("accessToken", jwtService.genToken(userDetails, loginMethod));
 		data.put("uName", userDetails.getUsername());
 		data.put("uId", userDetails.getuId());
 

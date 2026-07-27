@@ -125,7 +125,14 @@ public class JwtService {
     }
 
     public String genRefreshToken(UserDetails userDetails) {
+        return genRefreshToken(userDetails, "password");
+    }
+
+    // Carry loginMethod in the refresh token so a refreshed access token can preserve it (e.g. an
+    // OAuth2 session must stay "oauth2" across refreshes — otherwise logout can't build the Auth0 URL).
+    public String genRefreshToken(UserDetails userDetails, String loginMethod) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("loginMethod", loginMethod);
         CustomUserDetails refreshTokenDetail = (CustomUserDetails) userDetails;
         return initRefreshToken(claims, refreshTokenDetail.getuId());
     }
