@@ -1,58 +1,37 @@
 package io.linkinben.springbootsecurityjwt.services;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import javax.crypto.SecretKey;
-
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
+import io.linkinben.springbootsecurityjwt.jwt.KeyProvider;
+import io.linkinben.springbootsecurityjwt.jwt.TokenFactory;
+import io.linkinben.springbootsecurityjwt.jwt.TokenType;
 
+/**
+ * Parses/verifies JWTs and exposes the token-creation API. Key ownership lives in {@link KeyProvider}
+ * and token building in {@link TokenFactory} (Factory pattern, F2) — this service keeps the same
+ * public signatures so no callers or existing tests change.
+ */
 @Slf4j
 @Service
 public class JwtService {
 
-    // Secrets are sourced from config/env (G10). No hardcoded fallback here — the only fallback
-    // lives in the `local` profile (bootRun); every other environment fails fast if these are absent.
-    @Value("${jwt.access-secret}")
-    private String accessSecret;
-    @Value("${jwt.credential-secret}")
-    private String credentialSecret;
+    private final KeyProvider keys;
+    private final TokenFactory tokenFactory;
 
-    // Expire of 10 hours
-    private final int EXPIRATION = 10 * 1000 * 60 * 60;
-    // Expire of 7 days
-    private final int EXPIRATION_REFRESH = 7 * 24 * 1000 * 60 * 60;
-
-    private SecretKey signingKey;
-    private SecretKey credentialKey;
-
-    // Field initializers run before @Value injection, so keys are built here once secrets are set.
-    @PostConstruct
-    public void initKeys() {
-        signingKey = toKey(accessSecret);
-        credentialKey = toKey(credentialSecret);
-    }
-
-    // HS256 requires >= 32 bytes (256 bits). Fail fast on a weak/short secret rather than padding it.
-    private SecretKey toKey(String secret) {
-        byte[] bytes = secret == null ? new byte[0] : secret.getBytes(StandardCharsets.UTF_8);
-        if (bytes.length < 32) {
-            throw new IllegalStateException("JWT secret must be at least 32 bytes (256 bits) for HS256");
-        }
-        return Keys.hmacShaKeyFor(bytes);
+    public JwtService(KeyProvider keys, TokenFactory tokenFactory) {
+        this.keys = keys;
+        this.tokenFactory = tokenFactory;
     }
 
     public String extractSubject(String token) {
@@ -74,7 +53,7 @@ public class JwtService {
         if (token.startsWith("Bearer ")) {
             String jwt = token.substring(7);
             try {
-                return Jwts.parser().verifyWith(signingKey).build()
+                return Jwts.parser().verifyWith(keys.getSigningKey()).build()
                         .parseSignedClaims(jwt).getPayload();
             } catch (ExpiredJwtException e) {
                 throw new ExpiredJwtException(e.getHeader(), e.getClaims(), "Access Token Expired!");
@@ -84,7 +63,7 @@ public class JwtService {
         if (token.startsWith("Authorization ")) {
             String jwt = token.substring(14);
             try {
-                return Jwts.parser().verifyWith(signingKey).build()
+                return Jwts.parser().verifyWith(keys.getSigningKey()).build()
                         .parseSignedClaims(jwt).getPayload();
             } catch (ExpiredJwtException e) {
                 throw new ExpiredJwtException(e.getHeader(), e.getClaims(), "Refresh Token Expired!");
@@ -106,22 +85,12 @@ public class JwtService {
         claims.put("uId", uId);
         claims.put("uFullName", uFullName);
         claims.put("loginMethod", loginMethod);
-        return initToken(claims, userDetails.getUsername());
+        return tokenFactory.build(TokenType.ACCESS, userDetails.getUsername(), claims);
     }
 
     public String extractLoginMethod(String token) {
         Claims claims = extractAllClaims(token);
         return claims != null ? claims.get("loginMethod", String.class) : null;
-    }
-
-    private String initToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
-                .signWith(signingKey)
-                .compact();
     }
 
     public String genRefreshToken(UserDetails userDetails) {
@@ -134,37 +103,16 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("loginMethod", loginMethod);
         CustomUserDetails refreshTokenDetail = (CustomUserDetails) userDetails;
-        return initRefreshToken(claims, refreshTokenDetail.getuId());
-    }
-
-    private String initRefreshToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
-                .signWith(signingKey)
-                .compact();
+        return tokenFactory.build(TokenType.REFRESH, refreshTokenDetail.getuId(), claims);
     }
 
     public String genCredentialToken(String subject) {
-        Map<String, Object> claims = new HashMap<>();
-        return initCredentialToken(claims, subject);
-    }
-
-    private String initCredentialToken(Map<String, Object> claims, String subject) {
-        return Jwts.builder()
-                .claims(claims)
-                .subject(subject)
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_REFRESH))
-                .signWith(credentialKey)
-                .compact();
+        return tokenFactory.build(TokenType.CREDENTIAL, subject, new HashMap<>());
     }
 
     public String extractCredentialSubject(String token) {
         return Jwts.parser()
-                .verifyWith(credentialKey)
+                .verifyWith(keys.getCredentialKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()

@@ -17,7 +17,16 @@ spring:
     database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: false
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema outside 'local'; Hibernate only validates entities match the migrated
+      # schema (fail-fast on drift). The 'local' profile overrides this back to 'update' (see
+      # application-local.yml) so local prototyping stays Hibernate-driven with no migration authoring.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: true
+    # Stamp an existing (pre-Flyway) database as baseline V1 instead of running V1's CREATE TABLEs;
+    # only V2+ run on it. On a brand-new empty DB, V1 runs too.
+    baseline-on-migrate: true
+    baseline-version: 1

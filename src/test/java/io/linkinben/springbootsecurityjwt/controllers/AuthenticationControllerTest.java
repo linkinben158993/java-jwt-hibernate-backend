@@ -5,6 +5,7 @@ import io.linkinben.springbootsecurityjwt.configs.TestSecurityConfig;
 import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.events.UserLoggedOutEvent;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
@@ -21,7 +22,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.MockMvc;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Date;
 import java.util.List;
@@ -37,10 +42,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AuthenticationController.class)
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
+@RecordApplicationEvents
 class AuthenticationControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private ApplicationEvents applicationEvents;
 
     @MockitoBean private AuthenticationManager authenticationManager;
     @MockitoBean private JwtService jwtService;
@@ -143,9 +150,12 @@ class AuthenticationControllerTest {
                 .andExpect(content().json("{}"));
     }
 
-    // --- 10.7 POST /api/auth/logout password token — blacklists token, no auth0LogoutUrl ---
+    // --- 10.7 POST /api/auth/logout password token — publishes logout event, no auth0LogoutUrl ---
+    // P2 relocation: the controller no longer blacklists inline; it publishes UserLoggedOutEvent and a
+    // sync listener does the blacklisting (covered end-to-end by LogoutBlacklistIT). This slice test
+    // asserts the event is published — the listener is not part of the @WebMvcTest slice.
     @Test
-    void logout_passwordToken_blacklistsAndNoAuth0Url() throws Exception {
+    void logout_passwordToken_publishesLogoutEventAndNoAuth0Url() throws Exception {
         String rawJwt = "password.jwt.token";
         when(jwtService.extractExpiration("Bearer " + rawJwt)).thenReturn(new Date(System.currentTimeMillis() + 60_000));
         when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("password");
@@ -155,7 +165,7 @@ class AuthenticationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auth0LogoutUrl").doesNotExist());
 
-        verify(tokenBlacklistService).add(eq(rawJwt), anyLong());
+        assertThat(applicationEvents.stream(UserLoggedOutEvent.class).count()).isEqualTo(1);
     }
 
     // --- 10.8 POST /api/auth/logout OAuth2 token — returns auth0LogoutUrl ---
