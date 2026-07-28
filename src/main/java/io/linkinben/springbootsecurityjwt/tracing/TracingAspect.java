@@ -35,19 +35,21 @@ public class TracingAspect {
         String where = pjp.getSignature().getDeclaringType().getSimpleName()
                 + "#" + pjp.getSignature().getName();
         long start = System.nanoTime();
+        // ASCII markers only ('->' / '<-'): non-ASCII arrows garble on non-UTF-8 Windows consoles
+        // (e.g. GBK/CP936 renders the UTF-8 arrow bytes as mojibake) regardless of the logback charset.
         if (atInfo) {
-            log.info("→ {}", where);
+            log.info("-> {}", where);
         } else {
-            log.debug("→ {}", where);
+            log.debug("-> {}", where);
         }
         try {
             return pjp.proceed();
         } finally {
             long ms = (System.nanoTime() - start) / 1_000_000;
             if (atInfo) {
-                log.info("← {} ({} ms)", where, ms);
+                log.info("<- {} ({} ms)", where, ms);
             } else {
-                log.debug("← {} ({} ms)", where, ms);
+                log.debug("<- {} ({} ms)", where, ms);
             }
         }
     }
