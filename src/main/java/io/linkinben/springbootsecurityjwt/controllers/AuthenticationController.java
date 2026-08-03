@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,6 +35,7 @@ import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.events.UserLoggedOutEvent;
 import io.linkinben.springbootsecurityjwt.exceptions.BadRequestException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
 import io.linkinben.springbootsecurityjwt.exceptions.UnauthorizedException;
@@ -79,6 +81,9 @@ public class AuthenticationController {
 
 	@Autowired
 	private TokenBlacklistService tokenBlacklistService;
+
+	@Autowired
+	private ApplicationEventPublisher publisher;
 
 	@Value("${okta.oauth2.clientId}")
 	private String clientId;
@@ -141,7 +146,7 @@ public class AuthenticationController {
 		boolean isAdmin = OAUTH2_ADMIN_EMAILS.contains(email);
 		boolean isUser  = OAUTH2_USER_EMAILS.contains(email);
 		if (!isAdmin && !isUser) {
-			log.warn("OAuth2 login rejected — email not in whitelist: {}", email);
+			log.warn("OAuth2 login rejected - email not in whitelist: {}", email);
 			throw new ForbiddenOperationException("This Google account is not authorised.");
 		}
 
@@ -186,8 +191,10 @@ public class AuthenticationController {
 			String rawJwt = header.substring(7);
 			try {
 				long expiresAtMs = jwtService.extractExpiration(header).getTime();
-				tokenBlacklistService.add(rawJwt, expiresAtMs);
 				String loginMethod = jwtService.extractLoginMethod(header);
+				// Observer: publish once; the sync blacklist listener revokes the token, the async
+				// audit listener records it (side effects moved out of the controller — P2 relocation).
+				publisher.publishEvent(new UserLoggedOutEvent(rawJwt, expiresAtMs, loginMethod));
 				if ("oauth2".equals(loginMethod)) {
 					String returnTo = URLEncoder.encode(auth0LogoutReturnTo, StandardCharsets.UTF_8);
 					String auth0LogoutUrl = String.format(
@@ -195,9 +202,9 @@ public class AuthenticationController {
 							auth0LogoutDomain, returnTo, auth0LogoutClientId
 					);
 					response.put("auth0LogoutUrl", auth0LogoutUrl);
-					log.info("OAuth2 logout for token — Auth0 session termination URL returned");
+					log.info("OAuth2 logout for token - Auth0 session termination URL returned");
 				} else {
-					log.info("Password logout — token blacklisted");
+					log.info("Password logout - token blacklisted");
 				}
 			} catch (Exception e) {
 				log.warn("Logout called with unreadable token: {}", e.getMessage());

@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,9 +19,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.services.TokenBlacklistService;
 import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.JwtService;
+import io.linkinben.springbootsecurityjwt.tracing.MdcKeys;
 
 @Slf4j
 @Component
@@ -70,6 +73,10 @@ public class RequestFilterConfig extends OncePerRequestFilter {
 							userDetails, null, userDetails.getAuthorities());
 					authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 					SecurityContextHolder.getContext().setAuthentication(authToken);
+					// O6: per-user tracing — enrich MDC with the principal id. Cleared by TracingFilter.
+					if (userDetails instanceof CustomUserDetails cud) {
+						MDC.put(MdcKeys.USER_ID, cud.getuId());
+					}
 				}
 			}
 

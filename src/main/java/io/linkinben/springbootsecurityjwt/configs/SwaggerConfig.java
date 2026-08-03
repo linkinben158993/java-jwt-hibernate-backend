@@ -30,6 +30,6 @@ public class SwaggerConfig {
                                 .name(SCHEME_NAME)
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.HEADER)
-                                .description("Bearer JWT — enter: Bearer <token>")));
+                                .description("Bearer JWT - enter: Bearer <token>")));
     }
 }

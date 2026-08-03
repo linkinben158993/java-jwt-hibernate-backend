@@ -22,6 +22,9 @@ spring:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
       - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
+      # No DataSource in tests → Flyway would have nothing to migrate; exclude it explicitly so the
+      # test context never attempts a migration. Audit uses the log-only LoggingAuditService here.
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
   security:
     oauth2:
       client:

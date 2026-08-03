@@ -7,6 +7,11 @@ server:
 jwt:
   access-secret: ${JWT_ACCESS_SECRET}
   credential-secret: ${JWT_CREDENTIAL_SECRET}
+  # Token TTLs — env-overridable, Spring simple duration style (e.g. 10h, 7d, 1m, 30s).
+  # The 'local' profile overrides access-ttl to 1m (application-local.yml).
+  access-ttl: ${JWT_ACCESS_TTL:10h}
+  refresh-ttl: ${JWT_REFRESH_TTL:7d}
+  credential-ttl: ${JWT_CREDENTIAL_TTL:7d}
 
 spring:
   profiles:
@@ -17,7 +22,16 @@ spring:
     database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: false
     hibernate:
-      ddl-auto: update
+      # Flyway owns the schema outside 'local'; Hibernate only validates entities match the migrated
+      # schema (fail-fast on drift). The 'local' profile overrides this back to 'update' (see
+      # application-local.yml) so local prototyping stays Hibernate-driven with no migration authoring.
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: true
+    # Stamp an existing (pre-Flyway) database as baseline V1 instead of running V1's CREATE TABLEs;
+    # only V2+ run on it. On a brand-new empty DB, V1 runs too.
+    baseline-on-migrate: true
+    baseline-version: 1

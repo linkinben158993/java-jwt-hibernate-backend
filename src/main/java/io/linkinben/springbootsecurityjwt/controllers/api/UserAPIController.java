@@ -8,6 +8,7 @@ import java.util.Map;
 import io.linkinben.springbootsecurityjwt.entities.Roles;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -25,6 +26,8 @@ import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
 import io.linkinben.springbootsecurityjwt.dtos.RegisterRequest;
 import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
 import io.linkinben.springbootsecurityjwt.entities.Users;
+import io.linkinben.springbootsecurityjwt.events.RoleAssignedEvent;
+import io.linkinben.springbootsecurityjwt.events.UserRegisteredEvent;
 import io.linkinben.springbootsecurityjwt.exceptions.DuplicateResourceException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
 import io.linkinben.springbootsecurityjwt.exceptions.ResourceNotFoundException;
@@ -41,6 +44,9 @@ public class UserAPIController {
 
 	@Autowired
 	private UserAuthorizationService authz;
+
+	@Autowired
+	private ApplicationEventPublisher publisher;
 
 	@RequestMapping(value = "/me", method = RequestMethod.GET)
 	public ResponseEntity<?> getCurrentUser(Principal principal) {
@@ -80,6 +86,7 @@ public class UserAPIController {
 			throw new DuplicateResourceException("Email has already been used!");
 		}
 		userService.add(request.toUser(), "ROLE_ADMIN");
+		publisher.publishEvent(new UserRegisteredEvent(request.getEmail(), "ROLE_ADMIN"));
 		return ok("Create new admin user.", "New admin user add!", request.getEmail());
 	}
 
@@ -89,6 +96,7 @@ public class UserAPIController {
 			throw new DuplicateResourceException("Email has already been used!");
 		}
 		userService.add(request.toUser(), "ROLE_USER");
+		publisher.publishEvent(new UserRegisteredEvent(request.getEmail(), "ROLE_USER"));
 		return ok("Create new user.", "New user created!", request.getEmail());
 	}
 
@@ -120,6 +128,7 @@ public class UserAPIController {
 			throw new ForbiddenOperationException("Cannot grant a role at or above your own rank");
 		}
 		userService.assignRole(id, role);
+		publisher.publishEvent(new RoleAssignedEvent(authentication.getName(), id, role));
 		Map<String, Object> data = new HashMap<>();
 		data.put("uId", id);
 		data.put("role", role);

@@ -13,6 +13,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import io.linkinben.springbootsecurityjwt.jwt.KeyProvider;
+import io.linkinben.springbootsecurityjwt.jwt.TokenFactory;
 import io.linkinben.springbootsecurityjwt.services.JwtService;
 
 import java.util.Map;
@@ -61,11 +63,13 @@ class AuthenticationHandlerTest {
     @BeforeEach
     void setUp() {
         authenticationHandler = new AuthenticationHandler();
-        // Inject a JwtService with test secrets + built keys (mirrors Spring @Value + @PostConstruct).
-        JwtService jwtService = new JwtService();
-        ReflectionTestUtils.setField(jwtService, "accessSecret", "test-access-secret-0123456789-abcdefghijklmnop");
-        ReflectionTestUtils.setField(jwtService, "credentialSecret", "test-credential-secret-0123456789-abcdefghijklmnop");
-        jwtService.initKeys();
+        // Build a JwtService with test secrets + keys (mirrors Spring @Value + @PostConstruct).
+        // Key ownership now lives in KeyProvider; token building in TokenFactory (Factory pattern).
+        KeyProvider keys = new KeyProvider();
+        ReflectionTestUtils.setField(keys, "accessSecret", "test-access-secret-0123456789-abcdefghijklmnop");
+        ReflectionTestUtils.setField(keys, "credentialSecret", "test-credential-secret-0123456789-abcdefghijklmnop");
+        keys.initKeys();
+        JwtService jwtService = new JwtService(keys, new TokenFactory(keys));
         ReflectionTestUtils.setField(authenticationHandler, "jwtService", jwtService);
         successHandler = authenticationHandler.successHandler;
         failureHandler = authenticationHandler.failureHandler;

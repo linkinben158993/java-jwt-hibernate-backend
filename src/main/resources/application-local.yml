@@ -1,0 +1,21 @@
+# Local profile — activated ALONGSIDE dev by `gradlew bootRun` (SPRING_PROFILES_ACTIVE=dev,local).
+# This is the ONLY place JWT secrets have a static fallback, so local development needs zero setup.
+# Every other environment (dev/staging/prod, Docker, CI) inherits the env-var-backed values from
+# application.yml and fails fast if they are missing. These values are dev-only and NOT secret.
+jwt:
+  access-secret: local-dev-access-secret-do-not-use-in-prod-0123456789
+  credential-secret: local-dev-credential-secret-do-not-use-in-prod-0123456789
+  # Short access-token TTL locally so the expiry/refresh flow is quick to exercise by hand.
+  # Override any of these with JWT_ACCESS_TTL / JWT_REFRESH_TTL / JWT_CREDENTIAL_TTL env vars.
+  access-ttl: 1m
+
+# Local keeps the fast Hibernate path: Hibernate builds/updates the schema and Flyway is off, so no
+# migration authoring is needed while prototyping. Every other profile uses ddl-auto:validate + Flyway
+# (application.yml). Trade-off: an entity change with no matching Vn__*.sql fails startup OUTSIDE local
+# — the intended tripwire keeping local and prod schemas from silently diverging.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+  flyway:
+    enabled: false

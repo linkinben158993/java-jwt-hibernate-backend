@@ -1,5 +1,6 @@
 package io.linkinben.springbootsecurityjwt.configs;
 
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -68,6 +69,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**"
                 ).permitAll()
+                // Actuator health readable anonymously (observability O8); all other endpoints stay authenticated.
+                .requestMatchers(EndpointRequest.to("health")).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/users/roles").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/users/without-role").hasRole("ADMIN")
