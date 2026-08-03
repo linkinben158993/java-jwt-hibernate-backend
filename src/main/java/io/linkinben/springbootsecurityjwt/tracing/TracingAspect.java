@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Auto-logs entry/exit (component#method + duration) so a request's path through the layers is visible
- * without hand-placed logs. Combined with the MDC trace id, one request reads as a single correlated
- * trace across controller → service → repository (O3/O4).
+ * without hand-placed logs. Combined with the MDC correlation id, one request reads as a single
+ * correlated trace across controller -> service -> repository (O3/O4).
  *
  * <p>Levels (O3): controllers at INFO (the useful boundary log); services and repositories at DEBUG to
  * avoid log spam on deep call chains. All level-gated — prod runs at INFO (controller only), raise to

@@ -6,8 +6,8 @@ import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 
 /**
- * Copies the request thread's MDC (trace id, uId) onto an async worker thread so log lines emitted by
- * {@code @Async} listeners carry the same trace id (observability O7). Without this, an async thread
+ * Copies the request thread's MDC (correlation id, uId) onto an async worker thread so log lines emitted by
+ * {@code @Async} listeners carry the same correlation id (observability O7). Without this, an async thread
  * starts with an empty MDC and its logs would show a blank id.
  */
 public class MdcTaskDecorator implements TaskDecorator {
