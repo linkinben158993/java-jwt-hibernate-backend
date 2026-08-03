@@ -5,6 +5,9 @@
 jwt:
   access-secret: local-dev-access-secret-do-not-use-in-prod-0123456789
   credential-secret: local-dev-credential-secret-do-not-use-in-prod-0123456789
+  # Short access-token TTL locally so the expiry/refresh flow is quick to exercise by hand.
+  # Override any of these with JWT_ACCESS_TTL / JWT_REFRESH_TTL / JWT_CREDENTIAL_TTL env vars.
+  access-ttl: 1m
 
 # Local keeps the fast Hibernate path: Hibernate builds/updates the schema and Flyway is off, so no
 # migration authoring is needed while prototyping. Every other profile uses ddl-auto:validate + Flyway

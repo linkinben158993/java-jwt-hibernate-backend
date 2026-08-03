@@ -7,6 +7,11 @@ server:
 jwt:
   access-secret: ${JWT_ACCESS_SECRET}
   credential-secret: ${JWT_CREDENTIAL_SECRET}
+  # Token TTLs — env-overridable, Spring simple duration style (e.g. 10h, 7d, 1m, 30s).
+  # The 'local' profile overrides access-ttl to 1m (application-local.yml).
+  access-ttl: ${JWT_ACCESS_TTL:10h}
+  refresh-ttl: ${JWT_REFRESH_TTL:7d}
+  credential-ttl: ${JWT_CREDENTIAL_TTL:7d}
 
 spring:
   profiles:
