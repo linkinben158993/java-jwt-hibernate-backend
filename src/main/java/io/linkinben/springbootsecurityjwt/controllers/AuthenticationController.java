@@ -146,7 +146,7 @@ public class AuthenticationController {
 		boolean isAdmin = OAUTH2_ADMIN_EMAILS.contains(email);
 		boolean isUser  = OAUTH2_USER_EMAILS.contains(email);
 		if (!isAdmin && !isUser) {
-			log.warn("OAuth2 login rejected — email not in whitelist: {}", email);
+			log.warn("OAuth2 login rejected - email not in whitelist: {}", email);
 			throw new ForbiddenOperationException("This Google account is not authorised.");
 		}
 
@@ -202,9 +202,9 @@ public class AuthenticationController {
 							auth0LogoutDomain, returnTo, auth0LogoutClientId
 					);
 					response.put("auth0LogoutUrl", auth0LogoutUrl);
-					log.info("OAuth2 logout for token — Auth0 session termination URL returned");
+					log.info("OAuth2 logout for token - Auth0 session termination URL returned");
 				} else {
-					log.info("Password logout — token blacklisted");
+					log.info("Password logout - token blacklisted");
 				}
 			} catch (Exception e) {
 				log.warn("Logout called with unreadable token: {}", e.getMessage());

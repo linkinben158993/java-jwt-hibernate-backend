@@ -29,7 +29,7 @@ public class PersistentAuditService implements AuditService {
             repository.save(new AuditLog(eventType, actor, target, detail, LocalDateTime.now()));
         } catch (Exception e) {
             // Non-critical: keep the log line, swallow the persistence failure.
-            log.warn("Audit persistence failed for type={} — logged only: {}", eventType, e.getMessage());
+            log.warn("Audit persistence failed for type={} - logged only: {}", eventType, e.getMessage());
         }
     }
 }
