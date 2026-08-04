@@ -92,23 +92,29 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   (`!test`, writes `audit_log`, log-only fallback) / `LoggingAuditService` (`test`, log-only).
   `MdcTaskDecorator` carries the correlationId across the async hop.
 
-## 6. Persistence & migrations (Flyway — per-profile split)
+## 6. Persistence & migrations (Flyway — everywhere)
 
 | Profile | `ddl-auto` | Flyway | Owner |
 |---|---|---|---|
-| `local` (bootRun) | `update` | off | Hibernate (fast iteration) |
+| `local` (bootRun) | `validate` | on | Flyway owns schema; Hibernate validates |
 | default / `dev` / prod | `validate` | on (`baseline-on-migrate`) | Flyway owns schema; Hibernate validates |
 | `test` (IT) | n/a — JPA + Flyway autoconfig excluded | mocked repos |
 
-- **Migrations:** `V1__baseline_schema.sql` (users / roles / owned_roles / keywords) + `V2__audit_log.sql`.
+- **Flyway everywhere:** `local`/`dev`/prod all run `ddl-auto: validate` + Flyway on — one migration
+  mechanism across every runtime profile. Only the mocked-repo `test` profile excludes DataSource/JPA/Flyway.
+- **Migrations:** `V1__baseline_schema.sql` (users / roles / owned_roles / keywords) + `V2__audit_log.sql`
+  + `V3__seed_roles.sql` (role seed — idempotent `INSERT IGNORE` of `ROLE_USER` / `ROLE_ADMIN`).
   Entities: `users`, `roles`, `owned_roles` (join), `keywords`, `audit_log`.
-- **Tripwire:** an entity change without a matching `Vn__*.sql` fails startup **outside** local.
+- **Tripwire:** an entity change without a matching `Vn__*.sql` now fails startup in **all** profiles
+  (local included) — every entity change needs a migration.
   ⚠ `V1` is hand-authored; **regenerate it from `mysqldump --no-data` before provisioning a fresh DB.**
+- *2026-08-04: reversed the local-Hibernate split -> Flyway everywhere, to seed roles uniformly (G8).*
 
 ## 7. Config & profiles
 
 - `application.yml` — base: JWT secrets + TTLs (env), `ddl-auto:validate`, Flyway on.
-- `application-local.yml` — dev-only JWT fallback secrets, `ddl-auto:update`, Flyway off, `access-ttl:1m`.
+- `application-local.yml` — dev-only JWT fallback secrets, `ddl-auto:validate`, Flyway on
+  (was `ddl-auto:update` + Flyway off), `access-ttl:1m`.
 - `application-dev.yml` — datasource + OAuth2/Auth0 registration (from `.env`).
 - `application-test.yml` — static test secrets; excludes DataSource / JPA / Flyway autoconfig.
 - **Env vars:** `JWT_ACCESS_SECRET`, `JWT_CREDENTIAL_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`,
@@ -133,7 +139,6 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   it yet → the id is backend-generated today. (client task)
 - **Distributed token blacklist** (G11 persistence): in-memory `Map` is instance-local; move to a shared
   store (Redis/DB) for horizontal scaling.
-- **Role seeding** (G8, in-progress): seed `roles` via a Flyway migration now that Flyway is wired.
 - **State-mutating GET endpoints** (G13): `GET /api/users/roles` and `/without-role` perform writes —
   should be `POST`/`PATCH`.
 - **WebSocket auth** (G7, deprioritized): `/ws`, `/app`, `/topic` are `permitAll`, no STOMP auth.
@@ -147,7 +152,8 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
 
 **Testing / cosmetic**
 - **Audit DB-write path** is not exercised by the IT suite (`test` mocks JPA); verified live instead — add
-  a real-DB/`@DataJpaTest` IT if you want it covered automatically.
+  a real-DB/`@DataJpaTest` IT if you want it covered automatically. A reusable Testcontainers real-DB IT
+  pattern now exists (`RoleSeedIT` — throwaway MySQL + real Flyway) — a candidate to later close this gap.
 - Optional: role-assign **404 hide-existence** path IT (happy + forbidden are covered).
 - Cosmetic: em-dashes remain in **comments** (never reach the console) — harmless.
 

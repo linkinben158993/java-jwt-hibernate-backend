@@ -110,6 +110,10 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+
+    // Testcontainers — throwaway MySQL for real-DB integration tests (Spring Boot 3.5 manages versions)
+    integrationTestImplementation 'org.testcontainers:mysql'
+    integrationTestImplementation 'org.testcontainers:junit-jupiter'
 }
 
 // --- JaCoCo coverage ---

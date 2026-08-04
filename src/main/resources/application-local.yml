@@ -9,13 +9,13 @@ jwt:
   # Override any of these with JWT_ACCESS_TTL / JWT_REFRESH_TTL / JWT_CREDENTIAL_TTL env vars.
   access-ttl: 1m
 
-# Local keeps the fast Hibernate path: Hibernate builds/updates the schema and Flyway is off, so no
-# migration authoring is needed while prototyping. Every other profile uses ddl-auto:validate + Flyway
-# (application.yml). Trade-off: an entity change with no matching Vn__*.sql fails startup OUTSIDE local
-# — the intended tripwire keeping local and prod schemas from silently diverging.
+# Flyway now runs in EVERY profile, local included: local uses the same ddl-auto:validate + Flyway path
+# as dev/staging/prod (application.yml). One migration mechanism everywhere means every entity change
+# needs a matching Vn__*.sql migration — an entity with no migration fails startup in local too, the
+# intended tripwire keeping local and prod schemas from silently diverging.
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
   flyway:
-    enabled: false
+    enabled: true
