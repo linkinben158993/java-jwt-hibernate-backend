@@ -1,0 +1,895 @@
+openapi: 3.0.3
+
+# =============================================================================
+# TARGET CONTRACT — java-jwt-hibernate-backend (Phase 0, contract-first)
+# =============================================================================
+# This is the HAND-AUTHORED source of truth. It intentionally describes the
+# TARGET shape after two breaking changes agreed with the user:
+#   O-4b  FLATTEN the response envelope — the current {title,message,data}
+#         wrapper (and the AuthenticationResponse {response:{...}} double-wrap)
+#         is DROPPED. Payloads sit at the top level of the body.
+#   O-5b  Auth moves from the custom `access_token` / `refresh_token` headers to
+#         the standard `Authorization: Bearer <jwt>` header.
+#   O-6   Responses are typed DTOs. The JPA entities Users / Roles NEVER appear
+#         in the API surface.
+#
+# NOT YET IMPLEMENTED. No controller currently returns these shapes. This file
+# is the artifact the user reviews to sign the contract (Gate A'). The
+# openapi-generator plugin + controller migration happen in a later phase.
+# =============================================================================
+
+info:
+  title: An's API — JWT / Hibernate Backend
+  description: >-
+    E-learning auth & user-management API. Stateless JWT authentication with an
+    Auth0 / OAuth2 login path, admin-gated user & role management, and a
+    per-request `X-Correlation-Id` propagated through logs.
+
+
+    All responses are flat, typed bodies (no `{title,message,data}` envelope).
+    All errors share the `ErrorResponse` schema.
+  version: 4.0.0-contract
+  contact:
+    name: An
+    email: thienan.nguyenhoang311@gmail.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Authentication
+    description: Login, OAuth2, logout, token refresh
+  - name: Users
+    description: User registration, profile, and admin user management
+  - name: Roles
+    description: Role management (admin only)
+  - name: System
+    description: Health / welcome
+
+# -----------------------------------------------------------------------------
+# Global security: every operation requires a Bearer JWT unless it overrides
+# `security: []` (the public endpoints below do).
+# -----------------------------------------------------------------------------
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ===========================================================================
+  # Authentication
+  # ===========================================================================
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Password login — issue access + refresh JWT
+      operationId: login
+      security: []            # public
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+      responses:
+        '200':
+          description: Credentials accepted; tokens issued.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'          # bad credentials → 400 (existing contract)
+
+  /api/auth/oauth2/login:
+    post:
+      tags: [Authentication]
+      summary: OAuth2 / Auth0 login using a Google credential
+      description: >-
+        Exchanges a Google OAuth2 credential for application JWTs. The email must
+        be present in the server-side whitelist or the request is rejected 403.
+        Creates the user on first login.
+      operationId: loginWithOAuth2
+      security: []            # public
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuth2LoginRequest'
+      responses:
+        '200':
+          description: Credential accepted; tokens issued.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'           # malformed credential
+        '403':
+          $ref: '#/components/responses/Forbidden'            # email not whitelisted
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout — blacklist the current access token
+      description: >-
+        Revokes the access token supplied in `Authorization`. For OAuth2 sessions
+        the response carries the Auth0 SSO-teardown URL the client must redirect to.
+        Always 200, even with a missing/unreadable token (idempotent).
+      operationId: logout
+      security:
+        - bearerAuth: []       # reads the access token from Authorization
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+
+  /api/auth/okta:
+    get:
+      tags: [Authentication]
+      summary: OAuth2 / OIDC callback echo (diagnostic)
+      description: >-
+        Returns the OIDC client id and the echoed `code` / `state`. NOTE — the
+        current implementation also leaks the client secret; the target contract
+        deliberately DROPS it (see design doc, security note S-1).
+      operationId: getOktaInfo
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema: { type: string }
+        - name: state
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: OIDC diagnostic info.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OktaInfoResponse'
+
+  /api/auth/token/refresh:
+    post:
+      tags: [Authentication]
+      summary: Exchange a refresh token for a fresh access token
+      description: >-
+        Under O-5b the refresh token is presented in the standard
+        `Authorization: Bearer <refreshToken>` header (previously the custom
+        `refresh_token` header).
+      operationId: refreshToken
+      security:
+        - bearerAuth: []       # the REFRESH token, in Authorization
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: New access token issued.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'           # missing/malformed header
+        '401':
+          $ref: '#/components/responses/Unauthorized'         # expired / revoked / invalid
+
+  # ===========================================================================
+  # Users
+  # ===========================================================================
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List all users (admin)
+      description: Returns typed UserResponse objects — never the Users JPA entity (O-6).
+      operationId: findAllUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: All users.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Users]
+      summary: Register a new user (self-service, public)
+      operationId: register
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: User created.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/users/me:
+    get:
+      tags: [Users]
+      summary: Current authenticated user's profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Profile of the authenticated principal.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/admin:
+    post:
+      tags: [Users]
+      summary: Create a new admin user (admin)
+      operationId: referAdmin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Admin user created.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/users/without-role:
+    get:
+      tags: [Users]
+      summary: Backfill — clear role assignment for all users (admin, maintenance)
+      operationId: findAllUsersWithoutRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Maintenance action completed.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/users/roles:
+    get:
+      tags: [Users]
+      summary: Backfill — assign default roles to all users (admin, maintenance)
+      operationId: updateUsersRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Maintenance action completed.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/users/password:
+    patch:
+      tags: [Users]
+      summary: Change the authenticated user's password
+      description: Target is always the authenticated principal; the body carries only the new password.
+      operationId: changePassword
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/users/info:
+    patch:
+      tags: [Users]
+      summary: Update the authenticated user's own profile info
+      operationId: updateInfo
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInfoRequest'
+      responses:
+        '200':
+          description: Profile updated.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    patch:
+      tags: [Users]
+      summary: Update another user's profile (self or higher rank)
+      description: Ownership / rank enforced by @CanEditUser; a denial is hidden as 404.
+      operationId: updateUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInfoRequest'
+      responses:
+        '200':
+          description: User updated.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'    # also covers ownership/rank denial (D6)
+    delete:
+      tags: [Users]
+      summary: Delete a user (self or higher rank)
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: User deleted.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/users/{id}/role:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    patch:
+      tags: [Users]
+      summary: Assign a role to a user (admin; granted role must rank below caller)
+      operationId: assignRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignmentRequest'
+      responses:
+        '200':
+          description: Role assigned.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'    # granted role at/above caller rank
+        '404':
+          $ref: '#/components/responses/NotFound'      # target not visible to caller
+
+  # ===========================================================================
+  # Roles
+  # ===========================================================================
+  /api/roles:
+    post:
+      tags: [Roles]
+      summary: Create a role (admin)
+      description: >-
+        Under O-6 the request body is a typed CreateRoleRequest — the raw Roles
+        JPA entity is NO LONGER accepted (it previously was, exposing the
+        users back-reference).
+      operationId: createRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '200':
+          description: Role created.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ===========================================================================
+  # System
+  # ===========================================================================
+  /home/hello-world:
+    get:
+      tags: [System]
+      summary: Welcome message
+      operationId: helloWorld
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Welcome payload.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WelcomeResponse'
+
+# =============================================================================
+# Reusable components
+# =============================================================================
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Standard `Authorization: Bearer <jwt>` header (O-5b). Access token for
+        protected endpoints; the REFRESH token is supplied the same way on
+        POST /api/auth/token/refresh.
+
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: >-
+        Optional client-supplied request correlation id. Echoed back on the
+        response; a UUID is generated server-side when absent.
+      schema:
+        type: string
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Target user id (uId).
+      schema:
+        type: string
+
+  headers:
+    CorrelationId:
+      description: The correlation id for this request (echoed inbound value, or a generated UUID).
+      schema:
+        type: string
+
+  # ---------------------------------------------------------------------------
+  # Requests
+  # ---------------------------------------------------------------------------
+  schemas:
+    AuthenticationRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: admin@example.com
+        password:
+          type: string
+          format: password
+
+    OAuth2LoginRequest:
+      type: object
+      required: [credential]
+      properties:
+        credential:
+          type: string
+          description: Google OAuth2 credential (JWT).
+
+    RegisterRequest:
+      type: object
+      required: [email, fullName, password]
+      properties:
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        password:
+          type: string
+          format: password
+
+    ChangePasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+
+    UserInfoRequest:
+      type: object
+      required: [fullName]
+      description: Partial profile update. The uId is taken from the path/principal, never the body.
+      properties:
+        fullName:
+          type: string
+        age:
+          type: integer
+          nullable: true
+        dob:
+          type: string
+          format: date
+          nullable: true
+
+    RoleAssignmentRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          example: ROLE_USER
+
+    CreateRoleRequest:
+      type: object
+      required: [rName]
+      properties:
+        rName:
+          type: string
+          example: ROLE_MODERATOR
+
+    # -------------------------------------------------------------------------
+    # Responses (flat — no envelope)
+    # -------------------------------------------------------------------------
+    LoginResponse:
+      type: object
+      description: Flattened auth payload — replaces the old {response:{data:{...}}} double wrap.
+      required: [accessToken, refreshToken, uId, uName, role]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        uId:
+          type: string
+        uName:
+          type: string
+          description: The user's email / login name.
+        role:
+          type: string
+          example: ROLE_ADMIN
+
+    RefreshResponse:
+      type: object
+      required: [accessToken, uId, uName]
+      properties:
+        accessToken:
+          type: string
+        uId:
+          type: string
+        uName:
+          type: string
+
+    LogoutResponse:
+      type: object
+      properties:
+        auth0LogoutUrl:
+          type: string
+          nullable: true
+          description: Present only for OAuth2 sessions — the Auth0 SSO teardown URL to redirect to.
+
+    UserProfileResponse:
+      type: object
+      required: [email, fullName, role]
+      properties:
+        email:
+          type: string
+        fullName:
+          type: string
+        role:
+          type: string
+
+    UserResponse:
+      type: object
+      description: Public projection of a user — NEVER the Users JPA entity (no password, no roles graph).
+      required: [uId, email, fullName, role]
+      properties:
+        uId:
+          type: string
+        email:
+          type: string
+        fullName:
+          type: string
+        age:
+          type: integer
+          nullable: true
+        dob:
+          type: string
+          format: date
+          nullable: true
+        role:
+          type: string
+
+    RegisterResponse:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          description: Email of the created account.
+
+    RoleAssignmentResponse:
+      type: object
+      required: [uId, role]
+      properties:
+        uId:
+          type: string
+        role:
+          type: string
+
+    RoleResponse:
+      type: object
+      description: Public projection of a role — NEVER the Roles JPA entity (no users back-reference).
+      required: [rName]
+      properties:
+        rId:
+          type: string
+          nullable: true
+        rName:
+          type: string
+
+    MessageResponse:
+      type: object
+      description: Generic acknowledgement for actions with no resource payload.
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Done.
+
+    WelcomeResponse:
+      type: object
+      properties:
+        title:
+          type: string
+        message:
+          type: string
+
+    OktaInfoResponse:
+      type: object
+      description: OIDC diagnostic echo. Client secret is intentionally NOT included (security note S-1).
+      properties:
+        clientId:
+          type: string
+        code:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      description: Consistent error body produced by GlobalExceptionHandler. Never carries stack traces.
+      required: [title, message]
+      properties:
+        title:
+          type: string
+          example: Not found
+        message:
+          type: string
+          example: User not found
+        errCode:
+          type: string
+          nullable: true
+          example: ERR_NOT_FOUND
+
+  # ---------------------------------------------------------------------------
+  # Reusable error responses
+  # ---------------------------------------------------------------------------
+  responses:
+    BadRequest:
+      description: Invalid request (validation, malformed body, bad credentials).
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing, expired, revoked, or invalid token.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated but not permitted.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found (or hidden ownership/rank denial, D6).
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Duplicate resource (e.g. email already used).
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
