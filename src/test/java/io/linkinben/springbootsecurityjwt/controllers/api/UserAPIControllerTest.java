@@ -49,6 +49,11 @@ class UserAPIControllerTest {
 
     private Users existingUser;
 
+    // Explicit register body — the entity no longer serialises its password (S-2), so register/admin
+    // tests must supply the fields rather than round-tripping the Users entity as the request body.
+    private static final String REGISTER_BODY =
+            "{\"email\":\"test@example.com\",\"fullName\":\"Test User\",\"password\":\"pw12345\"}";
+
     @BeforeEach
     void setUp() {
         Roles role = new Roles("role-id", "ROLE_USER", null);
@@ -64,7 +69,7 @@ class UserAPIControllerTest {
         mockMvc.perform(post("/api/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(existingUser)))
+                        .content(REGISTER_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("New user created!"));
     }
@@ -77,7 +82,7 @@ class UserAPIControllerTest {
         mockMvc.perform(post("/api/users")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(existingUser)))
+                        .content(REGISTER_BODY))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.errCode").value("ERR_DUPLICATE"));
     }
@@ -102,6 +107,18 @@ class UserAPIControllerTest {
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray());
+    }
+
+    // --- 11.3b GET /api/users must NOT leak the password hash (S-2) ---
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void findAllUsers_doesNotLeakPasswordHash() throws Exception {
+        when(userService.findAll()).thenReturn(List.of(existingUser));
+
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].email").value("test@example.com"))
+                .andExpect(jsonPath("$.data[0].password").doesNotExist());
     }
 
     // --- 11.4 GET /api/users/roles ADMIN returns 200 ---
@@ -134,7 +151,7 @@ class UserAPIControllerTest {
         mockMvc.perform(post("/api/users/admin")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(existingUser)))
+                        .content(REGISTER_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("New admin user add!"));
     }
