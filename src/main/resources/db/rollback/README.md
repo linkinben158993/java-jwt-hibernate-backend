@@ -48,6 +48,19 @@ To roll back release N→N-1:
    (or `flyway repair` via the CLI once the forward file is gone from the deployed build).
 4. Deploy/start the older app build → Flyway sees a consistent history and Hibernate `validate` passes.
 
+## Examples in this folder (reference)
+
+Down-scripts derived from the real forward migrations, showing the two common shapes:
+
+| Forward (`db/migration/`) | Rollback (`db/rollback/`) | Shape |
+|---|---|---|
+| `V2__audit_log.sql` (CREATE TABLE) | `V2__revert_audit_log.sql` | **DDL** — clean `DROP TABLE` (no inbound FKs) |
+| `V3__seed_roles.sql` (data seed) | `V3__revert_seed_roles.sql` | **Data** — `DELETE` guarded by the `owned_roles` FK |
+
+`V1__baseline_schema.sql` has **no** down-script: it's the base schema, so you don't "roll it back" — a
+fresh environment is reset and rebuilt from `V1` instead (drop the DB, let Flyway re-run). These two files
+are reference examples; you'd only run them if actually reverting those features.
+
 ## Notes & warnings
 
 - These scripts are **not run by CI** and **not tested automatically** — write the down-script *when you
