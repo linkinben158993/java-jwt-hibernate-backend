@@ -107,8 +107,14 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   Entities: `users`, `roles`, `owned_roles` (join), `keywords`, `audit_log`.
 - **Tripwire:** an entity change without a matching `Vn__*.sql` now fails startup in **all** profiles
   (local included) — every entity change needs a migration.
-  ⚠ `V1` is hand-authored; **regenerate it from `mysqldump --no-data` before provisioning a fresh DB.**
+  ⚠ **Migration column names must be the PHYSICAL snake_case** Hibernate uses (Spring's
+  camelCase→snake_case strategy): `@Column(name="wId")` / `"rId"` become `w_id` / `r_id` in the DB.
+  Getting this wrong fails `ddl-auto: validate` on a fresh Flyway build. `SchemaMigrationValidationIT`
+  guards it (boots real Hibernate `validate` + Flyway on a Testcontainers MySQL). `V1` is hand-authored;
+  regenerate from `mysqldump --no-data` (or `SHOW CREATE TABLE`) before provisioning a fresh DB.
 - *2026-08-04: reversed the local-Hibernate split -> Flyway everywhere, to seed roles uniformly (G8).*
+- *2026-08-17: fixed V1 baseline column names (camelCase -> snake_case) — a latent bug that failed
+  `validate` on a fresh Flyway build; added `SchemaMigrationValidationIT` as the guard.*
 
 ## 7. Config & profiles
 
@@ -153,7 +159,8 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
 **Testing / cosmetic**
 - **Audit DB-write path** is not exercised by the IT suite (`test` mocks JPA); verified live instead — add
   a real-DB/`@DataJpaTest` IT if you want it covered automatically. A reusable Testcontainers real-DB IT
-  pattern now exists (`RoleSeedIT` — throwaway MySQL + real Flyway) — a candidate to later close this gap.
+  pattern now exists (`SchemaMigrationValidationIT` — `@DataJpaTest` + real Flyway + `validate` on a
+  throwaway MySQL) — a candidate to later close this gap.
 - Optional: role-assign **404 hide-existence** path IT (happy + forbidden are covered).
 - Cosmetic: em-dashes remain in **comments** (never reach the console) — harmless.
 
