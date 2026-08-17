@@ -60,3 +60,7 @@ bin/
 *.p12
 *.jks
 *.keystore
+
+# OpenAPI Phase 0 design/scout docs — workspace-only (the tracked contract is src/main/resources/openapi/openapi.yaml)
+docs/api/openapi-contract-first-phase0.md
+docs/api/openapi-contract-first-scout.md
