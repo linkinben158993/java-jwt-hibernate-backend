@@ -115,6 +115,13 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
 - *2026-08-04: reversed the local-Hibernate split -> Flyway everywhere, to seed roles uniformly (G8).*
 - *2026-08-17: fixed V1 baseline column names (camelCase -> snake_case) — a latent bug that failed
   `validate` on a fresh Flyway build; added `SchemaMigrationValidationIT` as the guard.*
+- **Migration & rollback policy (strict fail-fast):** the app deliberately refuses to start on any
+  inconsistency — Hibernate `validate` (entities vs schema) **and** Flyway's own validation (checksum +
+  applied-vs-classpath) are both kept **strict** (no `ignore-migration-patterns` relaxation). Default
+  recovery is **roll forward** (a new `Vn__*.sql` that reverses the change). Rolling the app back leaves
+  the schema ahead of the code → it will fail fast; revert the schema first using the hand-written
+  break-glass down-scripts in `src/main/resources/db/rollback/` (which Flyway does **not** scan), run
+  manually. See `db/rollback/README.md`.
 
 ## 7. Config & profiles
 
