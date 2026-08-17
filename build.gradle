@@ -40,6 +40,8 @@ sourceSets {
 configurations {
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+    // Mockito loaded as an explicit -javaagent (see tasks.withType(Test) below) instead of self-attaching.
+    mockitoAgent
 }
 
 tasks.register('integrationTest', Test) {
@@ -114,6 +116,10 @@ dependencies {
     // Testcontainers — throwaway MySQL for real-DB integration tests (Spring Boot 3.5 manages versions)
     integrationTestImplementation 'org.testcontainers:mysql'
     integrationTestImplementation 'org.testcontainers:junit-jupiter'
+
+    // Mockito as an agent (version via Spring Boot BOM) — avoids runtime self-attach (deprecated on
+    // newer JDKs) and the JaCoCo instrumentation error on the attach API it pulls in.
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
 }
 
 // --- JaCoCo coverage ---
@@ -133,6 +139,13 @@ test {
         showCauses true
         showStackTraces true
     }
+}
+
+// Load Mockito as an explicit Java agent on every Test task (test + integrationTest) so it does not
+// self-attach at runtime — self-attach warns on JDK 21+ and is disabled by default on newer JDKs, and it
+// triggers a JaCoCo instrumentation error on com/sun/tools/attach/VirtualMachine.
+tasks.withType(Test).configureEach {
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }
 
 jacocoTestReport {
