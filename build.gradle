@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.1'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
+    id 'org.openapi.generator' version '7.7.0'
 }
 
 group = 'io.linkinben'
@@ -62,6 +63,27 @@ tasks.register('integrationTest', Test) {
 }
 
 check.dependsOn integrationTest
+
+// --- OpenAPI contract-first codegen (O-1a / O-2) ---
+// Generates the Spring API interfaces + model DTOs from the hand-authored openapi.yaml (the source of
+// truth). Controllers implement the generated interfaces. Regenerated before every compile.
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec     = "$projectDir/src/main/resources/openapi/openapi.yaml"
+    outputDir     = layout.buildDirectory.dir('generated/openapi').get().asFile.toString()
+    apiPackage    = 'io.linkinben.springbootsecurityjwt.api'
+    modelPackage  = 'io.linkinben.springbootsecurityjwt.api.model'
+    configOptions = [
+        useSpringBoot3      : 'true',
+        interfaceOnly       : 'true',
+        useTags             : 'true',
+        openApiNullable     : 'false',
+        useJakartaEe        : 'true',
+        skipDefaultInterface: 'true'
+    ]
+}
+sourceSets.main.java.srcDir(layout.buildDirectory.dir('generated/openapi/src/main/java'))
+tasks.named('compileJava') { dependsOn(tasks.named('openApiGenerate')) }
 
 // --- Dependencies ---
 
