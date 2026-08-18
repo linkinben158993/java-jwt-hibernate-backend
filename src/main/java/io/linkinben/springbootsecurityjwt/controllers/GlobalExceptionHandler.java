@@ -15,7 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
-import io.linkinben.springbootsecurityjwt.dtos.ErrorResponse;
+import io.linkinben.springbootsecurityjwt.api.model.ErrorResponse;
 import io.linkinben.springbootsecurityjwt.exceptions.BadRequestException;
 import io.linkinben.springbootsecurityjwt.exceptions.DuplicateResourceException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;
@@ -112,6 +112,6 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String title, String message, String errCode) {
-        return ResponseEntity.status(status).body(new ErrorResponse(title, message, errCode));
+        return ResponseEntity.status(status).body(new ErrorResponse(title, message).errCode(errCode));
     }
 }
