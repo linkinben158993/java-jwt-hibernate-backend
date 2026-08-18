@@ -23,7 +23,7 @@ _Last updated: 2026-08-03 · Build: `.\gradlew check` green (129 tests, 0 failur
 **Request lifecycle (one line):**
 ```
 TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
-  → Spring Security chain → RequestFilterConfig (access_token JWT filter, MDC uId)
+  → Spring Security chain → RequestFilterConfig (Authorization: Bearer JWT filter, MDC uId)
     → controller → service → repository (Hibernate)     [AOP TracingAspect wraps ctrl/svc/repo]
 ```
 
@@ -165,12 +165,19 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   uses; extend to dev/prod and drop the redundant `okta.oauth2.issuer`. Add K8s `startupProbe`/
   `readinessProbe` on `/actuator/health` as complementary hardening. (Raised 2026-08-18.)
 - **Flyway `V1` baseline:** regenerate from a real `mysqldump` before a fresh-DB provision.
-- **OpenAPI contract-first** (parked): current API models are code-first/loose; revisit if a typed client
-  contract is needed (would also formalise the `X-Correlation-Id` header).
+- **OpenAPI contract-first** (✅ shipped 2026-08-18): the API is now generated from
+  `src/main/resources/openapi/openapi.yaml` — controllers implement the generated interfaces, responses are
+  flat typed DTOs (envelope dropped), auth is `Authorization: Bearer`, and `X-Correlation-Id` is formalised
+  in the contract. S-1/S-2/S-3 baked in. Codegen runs on every build path. Client aligned in lockstep.
 
 **Client (Angular repo)**
 - Send `X-Correlation-Id` per request; proactive token-expiry handling (G6); `uId`-in-localStorage
   hygiene (G9); ensure auth headers on all calls (G2).
+- **Register form omits `fullName` (deferred):** the OpenAPI `RegisterRequest` requires `email` + `fullName`
+  + `password`, but the client's register modal only sends `{email, password, dob}`, so username/password
+  registration 400s on the missing `fullName`. Add a full-name field to the register modal + `SignUp`
+  payload. (SSO login, refresh, and the user-list already align to the flat contract — verified live
+  2026-08-18. Raised during OpenAPI manual E2E.)
 
 **Testing / cosmetic**
 - **Audit DB-write path** is not exercised by the IT suite (`test` mocks JPA); verified live instead — add
