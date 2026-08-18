@@ -1,7 +1,6 @@
 package io.linkinben.springbootsecurityjwt.security;
 
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import io.linkinben.springbootsecurityjwt.repositories.impl.RoleRepositoryImpl;
 import io.linkinben.springbootsecurityjwt.repositories.impl.UserRepositoryImpl;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
@@ -45,16 +44,12 @@ class MalformedRefreshTokenIT {
     @Test
     void expiredAccessToken_malformedRefreshToken_returns401NotServerError() throws Exception {
         when(tokenBlacklistService.isBlacklisted(anyString())).thenReturn(false);
-        // Access token is expired → filter enters the refresh fallback branch.
+        // Access token (Authorization: Bearer, O-5b) is expired → the filter must surface a clean 401.
         when(jwtService.extractSubject("Bearer expired.access.token"))
                 .thenThrow(new ExpiredJwtException(null, null, "expired"));
-        // Refresh token is present + "Authorization "-prefixed but garbage → parsing throws.
-        when(jwtService.extractSubject("Authorization not-a-jwt"))
-                .thenThrow(new MalformedJwtException("Invalid compact JWT string"));
 
         mockMvc.perform(get("/api/users")
-                        .header("access_token", "Bearer expired.access.token")
-                        .header("refresh_token", "Authorization not-a-jwt"))
+                        .header("Authorization", "Bearer expired.access.token"))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -56,7 +56,7 @@ class RegisterContractIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"fullName\":\"New User\",\"password\":\"secret123\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value(email));
+                .andExpect(jsonPath("$.email").value(email));
 
         verify(userService).add(any(Users.class), eq("ROLE_USER"));
         assertThat(events.stream(UserRegisteredEvent.class)
