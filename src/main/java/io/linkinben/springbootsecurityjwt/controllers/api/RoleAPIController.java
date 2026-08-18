@@ -1,34 +1,34 @@
 package io.linkinben.springbootsecurityjwt.controllers.api;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 
+import io.linkinben.springbootsecurityjwt.api.RolesApi;
+import io.linkinben.springbootsecurityjwt.api.model.CreateRoleRequest;
+import io.linkinben.springbootsecurityjwt.api.model.RoleResponse;
 import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.services.RoleService;
 
+/**
+ * Contract-first role endpoint — implements the generated {@link RolesApi} interface. Under O-6 / S-3
+ * the request body is a typed {@link CreateRoleRequest}; the raw {@link Roles} JPA entity is no longer
+ * accepted (it exposed the users back-reference). The response is a flat {@link RoleResponse}.
+ */
 @RestController
-@RequestMapping("api/roles")
-public class RoleAPIController {
+public class RoleAPIController implements RolesApi {
 
 	@Autowired
 	private RoleService roleService;
 
-	@RequestMapping(value = "", method = RequestMethod.POST)
-	public ResponseEntity<?> create(@Valid @RequestBody Roles role) {
+	@Override
+	public ResponseEntity<RoleResponse> createRole(CreateRoleRequest createRoleRequest, String xCorrelationId) {
+		Roles role = new Roles();
+		role.setrName(createRoleRequest.getrName());
 		roleService.add(role);
-		Map<String, Object> response = new HashMap<String, Object>();
-		response.put("title", "Create new role.");
-		response.put("message", "New role created!");
-		response.put("data", role.getrName());
-		return new ResponseEntity<Object>(response, HttpStatus.OK);
+
+		RoleResponse response = new RoleResponse(role.getrName());
+		response.setrId(role.getrId());
+		return ResponseEntity.ok(response);
 	}
 }

@@ -54,7 +54,7 @@ class ChangePasswordOwnershipIT {
 
         // Non-"Bearer " value: the JWT filter skips it, leaving the @WithMockUser context intact.
         mockMvc.perform(patch("/api/users/password")
-                        .header("access_token", "dummy")
+                        .header("Authorization", "dummy")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isOk());

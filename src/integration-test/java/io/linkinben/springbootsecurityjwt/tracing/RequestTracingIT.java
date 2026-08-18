@@ -84,7 +84,7 @@ class RequestTracingIT {
     void singleRequest_controllerAndServiceShareTheCorrelationId() throws Exception {
         String token = arrangeAuthenticatedUser();
 
-        MvcResult result = mockMvc.perform(get("/api/users/me").header("access_token", "Bearer " + token))
+        MvcResult result = mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("X-Correlation-Id"))
                 .andReturn();
@@ -116,7 +116,7 @@ class RequestTracingIT {
         String clientCorrelationId = "client-correlation-2f8c1e40"; // a client-supplied id (not a UUID)
 
         mockMvc.perform(get("/api/users/me")
-                        .header("access_token", "Bearer " + token)
+                        .header("Authorization", "Bearer " + token)
                         .header("X-Correlation-Id", clientCorrelationId))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-Correlation-Id", clientCorrelationId)); // echoed back unchanged
@@ -131,7 +131,7 @@ class RequestTracingIT {
     void noInboundRequestId_backendGeneratesUuid() throws Exception {
         String token = arrangeAuthenticatedUser();
 
-        MvcResult result = mockMvc.perform(get("/api/users/me").header("access_token", "Bearer " + token))
+        MvcResult result = mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("X-Correlation-Id"))
                 .andReturn();

@@ -46,6 +46,6 @@ class RoleAPIControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(role)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("New role created!"));
+                .andExpect(jsonPath("$.rName").value("ROLE_MODERATOR"));
     }
 }

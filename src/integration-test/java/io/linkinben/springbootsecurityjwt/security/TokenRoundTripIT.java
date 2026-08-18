@@ -67,21 +67,21 @@ class TokenRoundTripIT {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode root = objectMapper.readTree(body);
-        return root.path("response").path("data").path("accessToken").asText();
+        return root.path("accessToken").asText();
     }
 
     @Test
     void adminToken_reachesAdminEndpoint_200() throws Exception {
         String token = loginAndGetToken("admin@example.com", "uid-admin", "ROLE_ADMIN");
         when(userService.findAll()).thenReturn(List.of());
-        mockMvc.perform(get("/api/users").header("access_token", "Bearer " + token))
+        mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
 
     @Test
     void userToken_deniedOnAdminEndpoint_403() throws Exception {
         String token = loginAndGetToken("user@example.com", "uid-user", "ROLE_USER");
-        mockMvc.perform(get("/api/users").header("access_token", "Bearer " + token))
+        mockMvc.perform(get("/api/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
     }
 
@@ -95,7 +95,7 @@ class TokenRoundTripIT {
         r.setrName("ROLE_USER");
         u.setRoles(Set.of(r));
         when(userService.findByEmail("user@example.com")).thenReturn(u);
-        mockMvc.perform(get("/api/users/me").header("access_token", "Bearer " + token))
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
 }

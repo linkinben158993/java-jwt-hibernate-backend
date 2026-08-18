@@ -1,7 +1,7 @@
 package io.linkinben.springbootsecurityjwt.controllers;
 
 import io.jsonwebtoken.ExpiredJwtException;
-import io.linkinben.springbootsecurityjwt.dtos.ErrorResponse;
+import io.linkinben.springbootsecurityjwt.api.model.ErrorResponse;
 import io.linkinben.springbootsecurityjwt.exceptions.BadRequestException;
 import io.linkinben.springbootsecurityjwt.exceptions.DuplicateResourceException;
 import io.linkinben.springbootsecurityjwt.exceptions.ForbiddenOperationException;

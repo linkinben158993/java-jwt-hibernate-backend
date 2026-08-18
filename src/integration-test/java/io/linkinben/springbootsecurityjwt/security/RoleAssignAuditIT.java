@@ -88,12 +88,12 @@ class RoleAssignAuditIT {
         String token = adminTokenWithUserTarget();
 
         mockMvc.perform(patch("/api/users/{id}/role", TARGET_ID)
-                        .header("access_token", "Bearer " + token)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"ROLE_USER\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.uId").value(TARGET_ID))
-                .andExpect(jsonPath("$.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.uId").value(TARGET_ID))
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
 
         verify(userService).assignRole(TARGET_ID, "ROLE_USER");
         assertThat(events.stream(RoleAssignedEvent.class)
@@ -109,7 +109,7 @@ class RoleAssignAuditIT {
 
         // Granting ROLE_ADMIN (rank 20) is not strictly below the admin caller (rank 20) → refused.
         mockMvc.perform(patch("/api/users/{id}/role", TARGET_ID)
-                        .header("access_token", "Bearer " + token)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"ROLE_ADMIN\"}"))
                 .andExpect(status().isForbidden())

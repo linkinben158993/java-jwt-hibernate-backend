@@ -51,7 +51,7 @@ class RequestFilterConfigTest {
     // --- 3.1 no access_token header — chain proceeds, context empty ---
     @Test
     void noAccessTokenHeader_chainProceeds_contextEmpty() throws Exception {
-        when(request.getHeader("access_token")).thenReturn(null);
+        when(request.getHeader("Authorization")).thenReturn(null);
         filter.doFilterInternal(request, response, filterChain);
         verify(filterChain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
@@ -60,7 +60,7 @@ class RequestFilterConfigTest {
     // --- 3.2 valid Bearer token — SecurityContext populated ---
     @Test
     void validBearerToken_populatesSecurityContext() throws Exception {
-        when(request.getHeader("access_token")).thenReturn("Bearer valid.jwt.token");
+        when(request.getHeader("Authorization")).thenReturn("Bearer valid.jwt.token");
         when(tokenBlacklistService.isBlacklisted("valid.jwt.token")).thenReturn(false);
         when(jwtService.extractSubject("Bearer valid.jwt.token")).thenReturn("test@example.com");
         when(userDetailsServiceImpl.loadUserByUsername("test@example.com")).thenReturn(userDetails);
@@ -77,7 +77,7 @@ class RequestFilterConfigTest {
     // --- 3.3 blacklisted token — context not set, chain still called ---
     @Test
     void blacklistedToken_contextNotSet_chainProceeds() throws Exception {
-        when(request.getHeader("access_token")).thenReturn("Bearer blacklisted.token");
+        when(request.getHeader("Authorization")).thenReturn("Bearer blacklisted.token");
         when(tokenBlacklistService.isBlacklisted("blacklisted.token")).thenReturn(true);
 
         filter.doFilterInternal(request, response, filterChain);
@@ -90,7 +90,7 @@ class RequestFilterConfigTest {
     // --- 3.4 tampered token — JwtException caught, 401 sent ---
     @Test
     void tamperedToken_jwtException_sends401() throws Exception {
-        when(request.getHeader("access_token")).thenReturn("Bearer tampered.token");
+        when(request.getHeader("Authorization")).thenReturn("Bearer tampered.token");
         when(tokenBlacklistService.isBlacklisted("tampered.token")).thenReturn(false);
         when(jwtService.extractSubject("Bearer tampered.token"))
                 .thenThrow(new JwtException("invalid signature"));
@@ -104,7 +104,7 @@ class RequestFilterConfigTest {
     // --- 3.5 expired access token → 401, context not set (G14: refresh now via /api/auth/token/refresh) ---
     @Test
     void expiredAccessToken_sends401_contextNotSet() throws Exception {
-        when(request.getHeader("access_token")).thenReturn("Bearer expired.token");
+        when(request.getHeader("Authorization")).thenReturn("Bearer expired.token");
         when(tokenBlacklistService.isBlacklisted("expired.token")).thenReturn(false);
         when(jwtService.extractSubject("Bearer expired.token"))
                 .thenThrow(new io.jsonwebtoken.ExpiredJwtException(null, null, "Access Token Expired!"));

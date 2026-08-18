@@ -1,30 +1,34 @@
 package io.linkinben.springbootsecurityjwt.controllers.api;
 
 import java.security.Principal;
-import java.util.HashMap;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-import io.linkinben.springbootsecurityjwt.entities.Roles;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.linkinben.springbootsecurityjwt.api.UsersApi;
+import io.linkinben.springbootsecurityjwt.api.model.ChangePasswordRequest;
+import io.linkinben.springbootsecurityjwt.api.model.MessageResponse;
+import io.linkinben.springbootsecurityjwt.api.model.RegisterRequest;
+import io.linkinben.springbootsecurityjwt.api.model.RegisterResponse;
+import io.linkinben.springbootsecurityjwt.api.model.RoleAssignmentRequest;
+import io.linkinben.springbootsecurityjwt.api.model.RoleAssignmentResponse;
+import io.linkinben.springbootsecurityjwt.api.model.UserInfoRequest;
+import io.linkinben.springbootsecurityjwt.api.model.UserProfileResponse;
+import io.linkinben.springbootsecurityjwt.api.model.UserResponse;
 import io.linkinben.springbootsecurityjwt.authz.CanEditUser;
 import io.linkinben.springbootsecurityjwt.authz.UserAuthorizationService;
 import io.linkinben.springbootsecurityjwt.dtos.ChangePasswordDTO;
-import io.linkinben.springbootsecurityjwt.dtos.RegisterRequest;
 import io.linkinben.springbootsecurityjwt.dtos.UserInfoDTO;
+import io.linkinben.springbootsecurityjwt.entities.Roles;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.events.RoleAssignedEvent;
 import io.linkinben.springbootsecurityjwt.events.UserRegisteredEvent;
@@ -34,10 +38,15 @@ import io.linkinben.springbootsecurityjwt.exceptions.ResourceNotFoundException;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Contract-first user endpoints — implements the generated {@link UsersApi} interface. Responses are
+ * flat, typed DTOs (O-4b) and never expose the {@link Users} JPA entity (O-6). Request bodies bind the
+ * generated request DTOs; the {@code uId} / principal is taken from the path or the security context,
+ * never trusted from the body (mass-assignment / account-takeover guards).
+ */
 @Slf4j
 @RestController
-@RequestMapping("api/users")
-public class UserAPIController {
+public class UserAPIController implements UsersApi {
 
 	@Autowired
 	private UserService userService;
@@ -48,113 +57,121 @@ public class UserAPIController {
 	@Autowired
 	private ApplicationEventPublisher publisher;
 
-	@RequestMapping(value = "/me", method = RequestMethod.GET)
-	public ResponseEntity<?> getCurrentUser(Principal principal) {
-		Users user = userService.findByEmail(principal.getName());
+	@Override
+	public ResponseEntity<UserProfileResponse> getCurrentUser(String xCorrelationId) {
+		Users user = userService.findByEmail(currentPrincipalName());
 		if (user == null) {
 			throw new ResourceNotFoundException("User not found");
 		}
-		String role = user.getRoles().stream().map(Roles::getrName).findFirst().orElse("NO_ROLE");
-		Map<String, Object> data = new HashMap<>();
-		data.put("email", user.getEmail());
-		data.put("fullName", user.getFullName());
-		data.put("role", role);
-		return ok("User profile", "Profile retrieved", data);
+		String role = firstRole(user);
+		return ResponseEntity.ok(new UserProfileResponse(user.getEmail(), user.getFullName(), role));
 	}
 
-	@RequestMapping(value = "", method = RequestMethod.GET)
-	public ResponseEntity<?> findAllUsers() {
-		List<Users> users = userService.findAll();
-		return ok("Request for all users.", "All users found!", users);
+	@Override
+	public ResponseEntity<List<UserResponse>> findAllUsers(String xCorrelationId) {
+		List<UserResponse> users = userService.findAll().stream()
+				.map(this::toUserResponse)
+				.toList();
+		return ResponseEntity.ok(users);
 	}
 
-	@RequestMapping(value = "/without-role", method = RequestMethod.GET)
-	public ResponseEntity<?> findAllUsersWithoutRole() {
+	@Override
+	public ResponseEntity<MessageResponse> findAllUsersWithoutRole(String xCorrelationId) {
 		userService.editAllWithoutRole();
-		return ok("Update role.", "All users updated!", "Whatsup");
+		return ResponseEntity.ok(new MessageResponse("All users updated!"));
 	}
 
-	@RequestMapping(value = "/roles", method = RequestMethod.GET)
-	public ResponseEntity<?> updateUserWithoutRole() {
+	@Override
+	public ResponseEntity<MessageResponse> updateUsersRole(String xCorrelationId) {
 		userService.editUsersRole();
-		return ok("Update role.", "All users updated!", "Whatsup");
+		return ResponseEntity.ok(new MessageResponse("All users updated!"));
 	}
 
-	@RequestMapping(value = "/admin", method = RequestMethod.POST)
-	public ResponseEntity<?> referAdmin(@Valid @RequestBody RegisterRequest request) {
-		if (userService.findByEmail(request.getEmail()) != null) {
+	@Override
+	public ResponseEntity<RegisterResponse> referAdmin(RegisterRequest registerRequest, String xCorrelationId) {
+		if (userService.findByEmail(registerRequest.getEmail()) != null) {
 			throw new DuplicateResourceException("Email has already been used!");
 		}
-		userService.add(request.toUser(), "ROLE_ADMIN");
-		publisher.publishEvent(new UserRegisteredEvent(request.getEmail(), "ROLE_ADMIN"));
-		return ok("Create new admin user.", "New admin user add!", request.getEmail());
+		userService.add(toUser(registerRequest), "ROLE_ADMIN");
+		publisher.publishEvent(new UserRegisteredEvent(registerRequest.getEmail(), "ROLE_ADMIN"));
+		return ResponseEntity.ok(new RegisterResponse(registerRequest.getEmail()));
 	}
 
-	@RequestMapping(value = "", method = RequestMethod.POST)
-	public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-		if (userService.findByEmail(request.getEmail()) != null) {
+	@Override
+	public ResponseEntity<RegisterResponse> register(RegisterRequest registerRequest, String xCorrelationId) {
+		if (userService.findByEmail(registerRequest.getEmail()) != null) {
 			throw new DuplicateResourceException("Email has already been used!");
 		}
-		userService.add(request.toUser(), "ROLE_USER");
-		publisher.publishEvent(new UserRegisteredEvent(request.getEmail(), "ROLE_USER"));
-		return ok("Create new user.", "New user created!", request.getEmail());
+		userService.add(toUser(registerRequest), "ROLE_USER");
+		publisher.publishEvent(new UserRegisteredEvent(registerRequest.getEmail(), "ROLE_USER"));
+		return ResponseEntity.ok(new RegisterResponse(registerRequest.getEmail()));
 	}
 
-	@RequestMapping(value = "/password", method = RequestMethod.PATCH)
-	public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordDTO user, Principal principal) {
-		// Ownership: always target the authenticated principal — never the body email (account takeover).
-		user.setEmail(principal.getName());
-		userService.editPassword(user);
-		return ok("Change password for: " + user.getEmail(), "Password changed!", user);
+	@Override
+	public ResponseEntity<MessageResponse> changePassword(ChangePasswordRequest changePasswordRequest,
+			String xCorrelationId) {
+		// Ownership: always target the authenticated principal — never a body-supplied email (account takeover).
+		ChangePasswordDTO dto = new ChangePasswordDTO(currentPrincipalName(), changePasswordRequest.getPassword());
+		userService.editPassword(dto);
+		return ResponseEntity.ok(new MessageResponse("Password changed!"));
+	}
+
+	@Override
+	public ResponseEntity<UserResponse> updateInfo(UserInfoRequest userInfoRequest, String xCorrelationId) {
+		Users current = userService.findByEmail(currentPrincipalName());
+		if (current == null) {
+			throw new ResourceNotFoundException("User not found");
+		}
+		// Principal is the current user extracted from the token — may only edit their own record here.
+		UserInfoDTO dto = toUserInfoDTO(current.getuId(), userInfoRequest);
+		userService.edit(dto);
+
+		UserResponse response = new UserResponse(
+				current.getuId(), current.getEmail(), userInfoRequest.getFullName(), firstRole(current));
+		response.setAge(userInfoRequest.getAge());
+		response.setDob(userInfoRequest.getDob());
+		return ResponseEntity.ok(response);
 	}
 
 	// Edit another user's profile — ownership/rank enforced by @CanEditUser (self or higher rank).
 	@CanEditUser
-	@RequestMapping(value = "/{id}", method = RequestMethod.PATCH)
-	public ResponseEntity<?> updateUserById(@PathVariable String id, @Valid @RequestBody UserInfoDTO user) {
-		user.setuId(id); // path id wins over any body-supplied uId (closes mass-assignment, G15)
-		userService.edit(user);
-		return ok("Update user", "User updated!", id);
+	@Override
+	public ResponseEntity<UserResponse> updateUserById(String id, UserInfoRequest userInfoRequest,
+			String xCorrelationId) {
+		UserInfoDTO dto = toUserInfoDTO(id, userInfoRequest); // path id wins (closes mass-assignment, G15)
+		userService.edit(dto);
+
+		Users target = userService.findById(id);
+		String email = target != null ? target.getEmail() : null;
+		String role = target != null ? firstRole(target) : null;
+		UserResponse response = new UserResponse(id, email, userInfoRequest.getFullName(), role);
+		response.setAge(userInfoRequest.getAge());
+		response.setDob(userInfoRequest.getDob());
+		return ResponseEntity.ok(response);
 	}
 
 	// Assign a role. @CanEditUser gates access to the target (404 if not allowed); the granted-role
 	// rule is a separate guard producing 403 (target visible, only the action forbidden).
 	@CanEditUser
-	@RequestMapping(value = "/{id}/role", method = RequestMethod.PATCH)
-	public ResponseEntity<?> assignRole(@PathVariable String id, @RequestBody Map<String, String> body,
-			Authentication authentication) {
-		String role = body.get("role");
+	@Override
+	public ResponseEntity<RoleAssignmentResponse> assignRole(String id, RoleAssignmentRequest roleAssignmentRequest,
+			String xCorrelationId) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		String role = roleAssignmentRequest.getRole();
 		if (!authz.canAssignRole(authentication, role)) {
 			throw new ForbiddenOperationException("Cannot grant a role at or above your own rank");
 		}
 		userService.assignRole(id, role);
 		publisher.publishEvent(new RoleAssignedEvent(authentication.getName(), id, role));
-		Map<String, Object> data = new HashMap<>();
-		data.put("uId", id);
-		data.put("role", role);
-		return ok("Assign role", "Role assigned!", data);
+		return ResponseEntity.ok(new RoleAssignmentResponse(id, role));
 	}
 
 	// Delete a user — same ownership/rank gate as edit.
 	@CanEditUser
-	@RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
-	public ResponseEntity<?> deleteUser(@PathVariable String id) {
+	@Override
+	public ResponseEntity<MessageResponse> deleteUser(String id, String xCorrelationId) {
 		userService.delete(id);
-		return ok("Delete user", "User deleted!", id);
-	}
-
-	@RequestMapping(value = "/info", method = RequestMethod.PATCH)
-	public ResponseEntity<?> updateInfo(@Valid @RequestBody UserInfoDTO user, Principal principal) {
-		Users current = userService.findByEmail(principal.getName());
-		if (current == null) {
-			throw new ResourceNotFoundException("User not found");
-		}
-		// Principal is current user extracted from token — may only edit their own record here.
-		if (!current.getuId().equals(user.getuId())) {
-			throw new ForbiddenOperationException("You are not authorized to edit this user!");
-		}
-		userService.edit(user);
-		return ok("Request Change Info For: " + user.getFullName(), "Info changed!", user);
+		return ResponseEntity.ok(new MessageResponse("User deleted!"));
 	}
 
 	// D6: an ownership/rank denial (AuthorizationDeniedException from @CanEditUser) is hidden as 404,
@@ -164,11 +181,42 @@ public class UserAPIController {
 		return ResponseEntity.notFound().build();
 	}
 
-	private ResponseEntity<Object> ok(String title, String message, Object data) {
-		Map<String, Object> response = new HashMap<>();
-		response.put("title", title);
-		response.put("message", message);
-		response.put("data", data);
-		return new ResponseEntity<>(response, HttpStatus.OK);
+	private String currentPrincipalName() {
+		Principal principal = SecurityContextHolder.getContext().getAuthentication();
+		return principal.getName();
+	}
+
+	private String firstRole(Users user) {
+		if (user.getRoles() == null) {
+			return "NO_ROLE";
+		}
+		return user.getRoles().stream().map(Roles::getrName).findFirst().orElse("NO_ROLE");
+	}
+
+	private UserResponse toUserResponse(Users user) {
+		UserResponse response = new UserResponse(
+				user.getuId(), user.getEmail(), user.getFullName(), firstRole(user));
+		response.setAge(user.getAge());
+		response.setDob(user.getDob() != null ? user.getDob().toLocalDate() : null);
+		return response;
+	}
+
+	/** Maps the register request to a Users entity carrying only the three client fields (no id, no roles). */
+	private Users toUser(RegisterRequest request) {
+		Users user = new Users();
+		user.setEmail(request.getEmail());
+		user.setFullName(request.getFullName());
+		user.setPassword(request.getPassword());
+		return user;
+	}
+
+	private UserInfoDTO toUserInfoDTO(String uId, UserInfoRequest request) {
+		UserInfoDTO dto = new UserInfoDTO();
+		dto.setuId(uId);
+		dto.setFullName(request.getFullName());
+		dto.setAge(request.getAge());
+		LocalDate dob = request.getDob();
+		dto.setDob(dob != null ? Date.valueOf(dob) : null);
+		return dto;
 	}
 }

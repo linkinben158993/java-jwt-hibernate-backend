@@ -71,7 +71,7 @@ class UserAPIControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REGISTER_BODY))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("New user created!"));
+                .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
     // --- 11.2 POST /api/users duplicate email returns 409 (DuplicateResourceException) ---
@@ -106,7 +106,7 @@ class UserAPIControllerTest {
 
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$").isArray());
     }
 
     // --- 11.3b GET /api/users must NOT leak the password hash (S-2) ---
@@ -117,8 +117,8 @@ class UserAPIControllerTest {
 
         mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].email").value("test@example.com"))
-                .andExpect(jsonPath("$.data[0].password").doesNotExist());
+                .andExpect(jsonPath("$[0].email").value("test@example.com"))
+                .andExpect(jsonPath("$[0].password").doesNotExist());
     }
 
     // --- 11.4 GET /api/users/roles ADMIN returns 200 ---
@@ -137,9 +137,9 @@ class UserAPIControllerTest {
 
         mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.email").value("test@example.com"))
-                .andExpect(jsonPath("$.data.fullName").value("Test User"))
-                .andExpect(jsonPath("$.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.email").value("test@example.com"))
+                .andExpect(jsonPath("$.fullName").value("Test User"))
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
     // --- 11.6 POST /api/users/admin ADMIN returns 200 ---
@@ -153,7 +153,7 @@ class UserAPIControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REGISTER_BODY))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("New admin user add!"));
+                .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
     // --- 11.7 PATCH /api/users/password authenticated returns 200 ---

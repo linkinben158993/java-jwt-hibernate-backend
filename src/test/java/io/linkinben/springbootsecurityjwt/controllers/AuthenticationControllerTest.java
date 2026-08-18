@@ -2,7 +2,7 @@ package io.linkinben.springbootsecurityjwt.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.linkinben.springbootsecurityjwt.configs.TestSecurityConfig;
-import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
+import io.linkinben.springbootsecurityjwt.api.model.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.events.UserLoggedOutEvent;
@@ -82,10 +82,10 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("admin@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.accessToken").value("access.token"))
-                .andExpect(jsonPath("$.response.data.uName").value("admin@example.com"))
-                .andExpect(jsonPath("$.response.data.uId").value("uid-admin"))
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.accessToken").value("access.token"))
+                .andExpect(jsonPath("$.uName").value("admin@example.com"))
+                .andExpect(jsonPath("$.uId").value("uid-admin"))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.2 POST /api/auth/login bad credentials returns 400 ---
@@ -112,7 +112,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("admin@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.4 POST /api/auth/login ROLE_USER returns role=ROLE_USER ---
@@ -127,7 +127,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("user@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
     // --- 10.5 POST /api/auth/login is accessible without Authorization header (permitAll) ---
@@ -161,7 +161,7 @@ class AuthenticationControllerTest {
         when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("password");
 
         mockMvc.perform(post("/api/auth/logout")
-                        .header("access_token", "Bearer " + rawJwt))
+                        .header("Authorization", "Bearer " + rawJwt))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auth0LogoutUrl").doesNotExist());
 
@@ -176,7 +176,7 @@ class AuthenticationControllerTest {
         when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("oauth2");
 
         mockMvc.perform(post("/api/auth/logout")
-                        .header("access_token", "Bearer " + rawJwt))
+                        .header("Authorization", "Bearer " + rawJwt))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auth0LogoutUrl").isString())
                 .andExpect(jsonPath("$.auth0LogoutUrl").value(org.hamcrest.Matchers.containsString("v2/logout")));
@@ -196,7 +196,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.10 POST /api/auth/oauth2/login whitelisted user email returns 200 ROLE_USER ---
@@ -213,7 +213,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
     // --- 10.11 POST /api/auth/oauth2/login non-whitelisted email returns 403 ---

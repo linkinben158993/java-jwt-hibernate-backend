@@ -2,8 +2,6 @@ package io.linkinben.springbootsecurityjwt.controllers;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.Principal;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -12,27 +10,24 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 
-import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
-import io.linkinben.springbootsecurityjwt.dtos.AuthenticationResponse;
+import io.linkinben.springbootsecurityjwt.api.AuthenticationApi;
+import io.linkinben.springbootsecurityjwt.api.model.AuthenticationRequest;
+import io.linkinben.springbootsecurityjwt.api.model.LoginResponse;
+import io.linkinben.springbootsecurityjwt.api.model.LogoutResponse;
+import io.linkinben.springbootsecurityjwt.api.model.OAuth2LoginRequest;
+import io.linkinben.springbootsecurityjwt.api.model.OktaInfoResponse;
+import io.linkinben.springbootsecurityjwt.api.model.RefreshResponse;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.events.UserLoggedOutEvent;
@@ -44,17 +39,17 @@ import io.linkinben.springbootsecurityjwt.services.UserDetailsServiceImpl;
 import io.linkinben.springbootsecurityjwt.services.UserService;
 import io.linkinben.springbootsecurityjwt.services.JwtService;
 
+/**
+ * Contract-first authentication endpoints — implements the generated {@link AuthenticationApi}
+ * interface (mappings come from the interface). Responses are flat, typed DTOs (O-4b); the access /
+ * refresh token is carried in the standard {@code Authorization: Bearer <jwt>} header (O-5b).
+ */
 @Slf4j
 @RestController
-@RequestMapping("api/auth")
-public class AuthenticationController {
+public class AuthenticationController implements AuthenticationApi {
 
 	// TODO: Move to application config or DB table — hardcoded whitelist is dev-only.
-	// Loop back to make this dynamic (e.g. spring.security.oauth2.whitelist.admin / .user
-	// or a DB-backed allowed_oauth2_emails table with a role column).
-	// Current whitelisted accounts:
-	//   ADMIN — thienan.nguyenhoang311@gmail.com
-	//		   — thienan.nguyenhoang011@gmail.com
+	//   ADMIN — thienan.nguyenhoang311@gmail.com / thienan.nguyenhoang011@gmail.com
 	//   USER  — thienan.nguyenhoang.411@gmail.com
 	// Only emails present in either list are permitted; all others are rejected with 403.
 	private static final Set<String> OAUTH2_ADMIN_EMAILS = Set.of(
@@ -85,6 +80,11 @@ public class AuthenticationController {
 	@Autowired
 	private ApplicationEventPublisher publisher;
 
+	// Request-scoped proxy — the interface signatures carry no HttpServletRequest, so read the
+	// Authorization header (O-5b) from the current request here.
+	@Autowired
+	private HttpServletRequest request;
+
 	@Value("${okta.oauth2.clientId}")
 	private String clientId;
 
@@ -100,8 +100,8 @@ public class AuthenticationController {
 	@Value("${auth0.logout.return-to}")
 	private String auth0LogoutReturnTo;
 
-	@RequestMapping(value = "/login", method = RequestMethod.POST)
-	public ResponseEntity<?> createAuthJWT(@Valid @RequestBody AuthenticationRequest authenticationRequest) {
+	@Override
+	public ResponseEntity<LoginResponse> login(AuthenticationRequest authenticationRequest, String xCorrelationId) {
 		// AuthenticationException (e.g. BadCredentialsException) propagates to GlobalExceptionHandler → 400.
 		Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
 				authenticationRequest.getUsername(), authenticationRequest.getPassword()));
@@ -111,30 +111,25 @@ public class AuthenticationController {
 
 		final String jwt = jwtService.genToken(customUserDetails);
 		final String jwt_refresh = jwtService.genRefreshToken(customUserDetails);
-		Map<String, Object> userInfo = new HashMap<String, Object>();
 
 		String role = customUserDetails.getAuthorities().stream()
 				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
-		userInfo.put("accessToken", jwt);
-		userInfo.put("refreshToken", jwt_refresh);
-		userInfo.put("uName", customUserDetails.getUsername());
-		userInfo.put("uId", customUserDetails.getuId());
-		userInfo.put("role", role);
 
-		Map<String, Object> response = new HashMap<String, Object>();
-		response.put("title", "Good Credential!");
-		response.put("message", "Access Granted!");
-		response.put("data", userInfo);
-		return new ResponseEntity<Object>(new AuthenticationResponse(response), HttpStatus.OK);
+		LoginResponse response = new LoginResponse(
+				jwt, jwt_refresh, customUserDetails.getuId(), customUserDetails.getUsername(), role);
+		return ResponseEntity.ok(response);
 	}
 
-	@RequestMapping(value = "/oauth2/login", method = RequestMethod.POST)
-	public ResponseEntity<?> loginWithOAuth2Credential(@RequestBody Map<String, String> body)
-			throws JsonProcessingException {
-		String credential = body.get("credential");
-		String subJson = jwtService.extractCredentialSubject(credential);
+	@Override
+	public ResponseEntity<LoginResponse> loginWithOAuth2(OAuth2LoginRequest oauth2LoginRequest, String xCorrelationId) {
+		String subJson = jwtService.extractCredentialSubject(oauth2LoginRequest.getCredential());
 
-		Map<String, Object> credentialData = objectMapper.readValue(subJson, new TypeReference<>() {});
+		Map<String, Object> credentialData;
+		try {
+			credentialData = objectMapper.readValue(subJson, new TypeReference<>() {});
+		} catch (JsonProcessingException e) {
+			throw new BadRequestException("Malformed credential");
+		}
 		String email = (String) credentialData.get("email");
 
 		String fullName = email;
@@ -169,24 +164,16 @@ public class AuthenticationController {
 
 		String role = userDetails.getAuthorities().stream()
 				.map(a -> a.getAuthority()).findFirst().orElse("ROLE_USER");
-		Map<String, Object> userInfo = new HashMap<>();
-		userInfo.put("accessToken", accessToken);
-		userInfo.put("refreshToken", refreshToken);
-		userInfo.put("uName", userDetails.getUsername());
-		userInfo.put("uId", userDetails.getuId());
-		userInfo.put("role", role);
 
-		Map<String, Object> response = new HashMap<>();
-		response.put("title", "Good Credential!");
-		response.put("message", "Access Granted!");
-		response.put("data", userInfo);
-		return new ResponseEntity<>(new AuthenticationResponse(response), HttpStatus.OK);
+		LoginResponse response = new LoginResponse(
+				accessToken, refreshToken, userDetails.getuId(), userDetails.getUsername(), role);
+		return ResponseEntity.ok(response);
 	}
 
-	@RequestMapping(value = "/logout", method = RequestMethod.POST)
-	public ResponseEntity<?> logout(HttpServletRequest request) {
-		Map<String, Object> response = new HashMap<>();
-		String header = request.getHeader("access_token");
+	@Override
+	public ResponseEntity<LogoutResponse> logout(String xCorrelationId) {
+		LogoutResponse response = new LogoutResponse();
+		String header = request.getHeader("Authorization");
 		if (header != null && header.startsWith("Bearer ")) {
 			String rawJwt = header.substring(7);
 			try {
@@ -201,7 +188,7 @@ public class AuthenticationController {
 							"https://%s/v2/logout?returnTo=%s&client_id=%s",
 							auth0LogoutDomain, returnTo, auth0LogoutClientId
 					);
-					response.put("auth0LogoutUrl", auth0LogoutUrl);
+					response.setAuth0LogoutUrl(auth0LogoutUrl);
 					log.info("OAuth2 logout for token - Auth0 session termination URL returned");
 				} else {
 					log.info("Password logout - token blacklisted");
@@ -213,37 +200,24 @@ public class AuthenticationController {
 		return ResponseEntity.ok(response);
 	}
 
-	@RequestMapping(value = "/okta", method = RequestMethod.GET)
-	public ResponseEntity<?> getOktaInfo(@RequestParam(required = false) String code,
-			@RequestParam(required = false) String state, @AuthenticationPrincipal OidcUser user) {
-		Map<String, Object> data = new HashMap<String, Object>();
-		data.put("client-id", this.clientId);
-		data.put("client-secret", this.clientSecret);
-		data.put("code", "default");
-		data.put("state", "default");
-		try {
-			log.debug("OIDC user principal: {}", user);
-			data.put("code", code);
-			data.put("state", state);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		Map<String, Object> response = new HashMap<String, Object>();
-		response.put("title", "Good Credential!");
-		response.put("message", "Access Granted!");
-		response.put("data", data);
-		AuthenticationResponse authenticationResponse = new AuthenticationResponse(response);
-		return new ResponseEntity<Object>(authenticationResponse, HttpStatus.OK);
+	@Override
+	public ResponseEntity<OktaInfoResponse> getOktaInfo(String code, String state, String xCorrelationId) {
+		// S-1: the client secret is intentionally NOT included in the response.
+		OktaInfoResponse response = new OktaInfoResponse();
+		response.setClientId(this.clientId);
+		response.setCode(code);
+		response.setState(state);
+		return ResponseEntity.ok(response);
 	}
 
 	// G14: exchange a valid refresh token for a fresh access token. Stateless — verify signature +
 	// expiry, blacklist-check, then reissue. Errors surface as domain/JWT exceptions → 400/401.
-	@RequestMapping(value = "/token/refresh", method = RequestMethod.POST)
-	public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-		String header = request.getHeader("refresh_token");
+	// O-5b: the refresh token now arrives in the standard Authorization: Bearer <refreshToken> header.
+	@Override
+	public ResponseEntity<RefreshResponse> refreshToken(String xCorrelationId) {
+		String header = request.getHeader("Authorization");
 		if (header == null || !header.startsWith("Bearer ")) {
-			throw new BadRequestException("Missing or malformed refresh_token header");
+			throw new BadRequestException("Missing or malformed Authorization header");
 		}
 		String rawJwt = header.substring(7);
 		if (tokenBlacklistService.isBlacklisted(rawJwt)) {
@@ -258,15 +232,8 @@ public class AuthenticationController {
 		}
 		CustomUserDetails userDetails = (CustomUserDetails) userDetailsServiceImpl.loadUserByUserId(uId);
 
-		Map<String, Object> data = new HashMap<String, Object>();
-		data.put("accessToken", jwtService.genToken(userDetails, loginMethod));
-		data.put("uName", userDetails.getUsername());
-		data.put("uId", userDetails.getuId());
-
-		Map<String, Object> response = new HashMap<String, Object>();
-		response.put("title", "Good Credential!");
-		response.put("message", "Access Granted!");
-		response.put("data", data);
-		return new ResponseEntity<Object>(new AuthenticationResponse(response), HttpStatus.OK);
+		RefreshResponse response = new RefreshResponse(
+				jwtService.genToken(userDetails, loginMethod), userDetails.getuId(), userDetails.getUsername());
+		return ResponseEntity.ok(response);
 	}
 }
