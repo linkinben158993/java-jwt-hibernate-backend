@@ -36,6 +36,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -226,6 +227,20 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isForbidden());
+    }
+
+    // --- 10.12 GET /api/auth/okta echoes clientId + code/state but NEVER the client secret (S-1) ---
+    // Locks the S-1 fix into the contract: the OktaInfoResponse must not carry the client secret, and the
+    // controller must not reintroduce it. Guards against a future regression on either side.
+    @Test
+    void getOktaInfo_returnsClientId_butNeverLeaksClientSecret() throws Exception {
+        mockMvc.perform(get("/api/auth/okta").param("code", "abc").param("state", "xyz"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientId").exists())
+                .andExpect(jsonPath("$.code").value("abc"))
+                .andExpect(jsonPath("$.state").value("xyz"))
+                .andExpect(jsonPath("$.clientSecret").doesNotExist())
+                .andExpect(jsonPath("$.['client-secret']").doesNotExist());
     }
 
     // --- 10.11b POST /api/auth/oauth2/login malformed credential returns 400 (not 500) ---
