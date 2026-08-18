@@ -16,6 +16,11 @@ jwt:
 spring:
   profiles:
     active: dev  # override via SPRING_PROFILES_ACTIVE env var (e.g. prod, staging)
+  jackson:
+    # Contract-first responses (O-4b/O-6): the generated DTOs model several fields as nullable and
+    # "present only when ..." (e.g. LogoutResponse.auth0LogoutUrl only for OAuth2, UserResponse.age/dob).
+    # Omit null properties so the JSON matches the contract's presence semantics.
+    default-property-inclusion: non_null
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:

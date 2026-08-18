@@ -2,7 +2,7 @@ package io.linkinben.springbootsecurityjwt.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.linkinben.springbootsecurityjwt.configs.TestSecurityConfig;
-import io.linkinben.springbootsecurityjwt.dtos.AuthenticationRequest;
+import io.linkinben.springbootsecurityjwt.api.model.AuthenticationRequest;
 import io.linkinben.springbootsecurityjwt.dtos.CustomUserDetails;
 import io.linkinben.springbootsecurityjwt.entities.Users;
 import io.linkinben.springbootsecurityjwt.events.UserLoggedOutEvent;
@@ -36,6 +36,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -82,10 +83,10 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("admin@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.accessToken").value("access.token"))
-                .andExpect(jsonPath("$.response.data.uName").value("admin@example.com"))
-                .andExpect(jsonPath("$.response.data.uId").value("uid-admin"))
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.accessToken").value("access.token"))
+                .andExpect(jsonPath("$.uName").value("admin@example.com"))
+                .andExpect(jsonPath("$.uId").value("uid-admin"))
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.2 POST /api/auth/login bad credentials returns 400 ---
@@ -112,7 +113,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("admin@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.4 POST /api/auth/login ROLE_USER returns role=ROLE_USER ---
@@ -127,7 +128,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new AuthenticationRequest("user@example.com", "pw"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
     // --- 10.5 POST /api/auth/login is accessible without Authorization header (permitAll) ---
@@ -161,7 +162,7 @@ class AuthenticationControllerTest {
         when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("password");
 
         mockMvc.perform(post("/api/auth/logout")
-                        .header("access_token", "Bearer " + rawJwt))
+                        .header("Authorization", "Bearer " + rawJwt))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auth0LogoutUrl").doesNotExist());
 
@@ -176,7 +177,7 @@ class AuthenticationControllerTest {
         when(jwtService.extractLoginMethod("Bearer " + rawJwt)).thenReturn("oauth2");
 
         mockMvc.perform(post("/api/auth/logout")
-                        .header("access_token", "Bearer " + rawJwt))
+                        .header("Authorization", "Bearer " + rawJwt))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auth0LogoutUrl").isString())
                 .andExpect(jsonPath("$.auth0LogoutUrl").value(org.hamcrest.Matchers.containsString("v2/logout")));
@@ -196,7 +197,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_ADMIN"));
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"));
     }
 
     // --- 10.10 POST /api/auth/oauth2/login whitelisted user email returns 200 ROLE_USER ---
@@ -213,7 +214,7 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.role").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
     // --- 10.11 POST /api/auth/oauth2/login non-whitelisted email returns 403 ---
@@ -226,6 +227,20 @@ class AuthenticationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("credential", "dummy.credential.token"))))
                 .andExpect(status().isForbidden());
+    }
+
+    // --- 10.12 GET /api/auth/okta echoes clientId + code/state but NEVER the client secret (S-1) ---
+    // Locks the S-1 fix into the contract: the OktaInfoResponse must not carry the client secret, and the
+    // controller must not reintroduce it. Guards against a future regression on either side.
+    @Test
+    void getOktaInfo_returnsClientId_butNeverLeaksClientSecret() throws Exception {
+        mockMvc.perform(get("/api/auth/okta").param("code", "abc").param("state", "xyz"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientId").exists())
+                .andExpect(jsonPath("$.code").value("abc"))
+                .andExpect(jsonPath("$.state").value("xyz"))
+                .andExpect(jsonPath("$.clientSecret").doesNotExist())
+                .andExpect(jsonPath("$.['client-secret']").doesNotExist());
     }
 
     // --- 10.11b POST /api/auth/oauth2/login malformed credential returns 400 (not 500) ---

@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    private static final String SCHEME_NAME = "access_token";
+    // O-5b: standard Authorization: Bearer <jwt> header (was the custom access_token APIKEY header).
+    private static final String SCHEME_NAME = "bearerAuth";
 
     @Bean
     public OpenAPI apiInfo() {
@@ -28,8 +29,9 @@ public class SwaggerConfig {
                 .components(new Components()
                         .addSecuritySchemes(SCHEME_NAME, new SecurityScheme()
                                 .name(SCHEME_NAME)
-                                .type(SecurityScheme.Type.APIKEY)
-                                .in(SecurityScheme.In.HEADER)
-                                .description("Bearer JWT - enter: Bearer <token>")));
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .description("Standard Authorization: Bearer <jwt> header")));
     }
 }

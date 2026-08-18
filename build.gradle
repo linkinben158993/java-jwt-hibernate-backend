@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.1'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'jacoco'
+    id 'org.openapi.generator' version '7.7.0'
 }
 
 group = 'io.linkinben'
@@ -40,6 +41,8 @@ sourceSets {
 configurations {
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+    // Mockito loaded as an explicit -javaagent (see tasks.withType(Test) below) instead of self-attaching.
+    mockitoAgent
 }
 
 tasks.register('integrationTest', Test) {
@@ -60,6 +63,27 @@ tasks.register('integrationTest', Test) {
 }
 
 check.dependsOn integrationTest
+
+// --- OpenAPI contract-first codegen (O-1a / O-2) ---
+// Generates the Spring API interfaces + model DTOs from the hand-authored openapi.yaml (the source of
+// truth). Controllers implement the generated interfaces. Regenerated before every compile.
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec     = "$projectDir/src/main/resources/openapi/openapi.yaml"
+    outputDir     = layout.buildDirectory.dir('generated/openapi').get().asFile.toString()
+    apiPackage    = 'io.linkinben.springbootsecurityjwt.api'
+    modelPackage  = 'io.linkinben.springbootsecurityjwt.api.model'
+    configOptions = [
+        useSpringBoot3      : 'true',
+        interfaceOnly       : 'true',
+        useTags             : 'true',
+        openApiNullable     : 'false',
+        useJakartaEe        : 'true',
+        skipDefaultInterface: 'true'
+    ]
+}
+sourceSets.main.java.srcDir(layout.buildDirectory.dir('generated/openapi/src/main/java'))
+tasks.named('compileJava') { dependsOn(tasks.named('openApiGenerate')) }
 
 // --- Dependencies ---
 
@@ -110,6 +134,14 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+
+    // Testcontainers — throwaway MySQL for real-DB integration tests (Spring Boot 3.5 manages versions)
+    integrationTestImplementation 'org.testcontainers:mysql'
+    integrationTestImplementation 'org.testcontainers:junit-jupiter'
+
+    // Mockito as an agent (version via Spring Boot BOM) — avoids runtime self-attach (deprecated on
+    // newer JDKs) and the JaCoCo instrumentation error on the attach API it pulls in.
+    mockitoAgent('org.mockito:mockito-core') { transitive = false }
 }
 
 // --- JaCoCo coverage ---
@@ -129,6 +161,13 @@ test {
         showCauses true
         showStackTraces true
     }
+}
+
+// Load Mockito as an explicit Java agent on every Test task (test + integrationTest) so it does not
+// self-attach at runtime — self-attach warns on JDK 21+ and is disabled by default on newer JDKs, and it
+// triggers a JaCoCo instrumentation error on com/sun/tools/attach/VirtualMachine.
+tasks.withType(Test).configureEach {
+    jvmArgs "-javaagent:${configurations.mockitoAgent.asPath}"
 }
 
 jacocoTestReport {

@@ -50,8 +50,8 @@ class ExpiredTokenNoRefreshIT {
                 .thenThrow(new ExpiredJwtException(null, null, "expired"));
 
         mockMvc.perform(get("/api/users")
-                        .header("access_token", "Bearer expired.jwt.token"))
-                // No refresh_token header at all — must be a clean 401, never a 500.
+                        .header("Authorization", "Bearer expired.jwt.token"))
+                // No token to fall back on — must be a clean 401, never a 500.
                 .andExpect(status().isUnauthorized());
     }
 }

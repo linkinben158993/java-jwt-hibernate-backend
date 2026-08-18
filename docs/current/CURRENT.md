@@ -23,7 +23,7 @@ _Last updated: 2026-08-03 · Build: `.\gradlew check` green (129 tests, 0 failur
 **Request lifecycle (one line):**
 ```
 TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
-  → Spring Security chain → RequestFilterConfig (access_token JWT filter, MDC uId)
+  → Spring Security chain → RequestFilterConfig (Authorization: Bearer JWT filter, MDC uId)
     → controller → service → repository (Hibernate)     [AOP TracingAspect wraps ctrl/svc/repo]
 ```
 
@@ -92,23 +92,42 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   (`!test`, writes `audit_log`, log-only fallback) / `LoggingAuditService` (`test`, log-only).
   `MdcTaskDecorator` carries the correlationId across the async hop.
 
-## 6. Persistence & migrations (Flyway — per-profile split)
+## 6. Persistence & migrations (Flyway — everywhere)
 
 | Profile | `ddl-auto` | Flyway | Owner |
 |---|---|---|---|
-| `local` (bootRun) | `update` | off | Hibernate (fast iteration) |
+| `local` (bootRun) | `validate` | on | Flyway owns schema; Hibernate validates |
 | default / `dev` / prod | `validate` | on (`baseline-on-migrate`) | Flyway owns schema; Hibernate validates |
 | `test` (IT) | n/a — JPA + Flyway autoconfig excluded | mocked repos |
 
-- **Migrations:** `V1__baseline_schema.sql` (users / roles / owned_roles / keywords) + `V2__audit_log.sql`.
+- **Flyway everywhere:** `local`/`dev`/prod all run `ddl-auto: validate` + Flyway on — one migration
+  mechanism across every runtime profile. Only the mocked-repo `test` profile excludes DataSource/JPA/Flyway.
+- **Migrations:** `V1__baseline_schema.sql` (users / roles / owned_roles / keywords) + `V2__audit_log.sql`
+  + `V3__seed_roles.sql` (role seed — idempotent `INSERT IGNORE` of `ROLE_USER` / `ROLE_ADMIN`).
   Entities: `users`, `roles`, `owned_roles` (join), `keywords`, `audit_log`.
-- **Tripwire:** an entity change without a matching `Vn__*.sql` fails startup **outside** local.
-  ⚠ `V1` is hand-authored; **regenerate it from `mysqldump --no-data` before provisioning a fresh DB.**
+- **Tripwire:** an entity change without a matching `Vn__*.sql` now fails startup in **all** profiles
+  (local included) — every entity change needs a migration.
+  ⚠ **Migration column names must be the PHYSICAL snake_case** Hibernate uses (Spring's
+  camelCase→snake_case strategy): `@Column(name="wId")` / `"rId"` become `w_id` / `r_id` in the DB.
+  Getting this wrong fails `ddl-auto: validate` on a fresh Flyway build. `SchemaMigrationValidationIT`
+  guards it (boots real Hibernate `validate` + Flyway on a Testcontainers MySQL). `V1` is hand-authored;
+  regenerate from `mysqldump --no-data` (or `SHOW CREATE TABLE`) before provisioning a fresh DB.
+- *2026-08-04: reversed the local-Hibernate split -> Flyway everywhere, to seed roles uniformly (G8).*
+- *2026-08-17: fixed V1 baseline column names (camelCase -> snake_case) — a latent bug that failed
+  `validate` on a fresh Flyway build; added `SchemaMigrationValidationIT` as the guard.*
+- **Migration & rollback policy (strict fail-fast):** the app deliberately refuses to start on any
+  inconsistency — Hibernate `validate` (entities vs schema) **and** Flyway's own validation (checksum +
+  applied-vs-classpath) are both kept **strict** (no `ignore-migration-patterns` relaxation). Default
+  recovery is **roll forward** (a new `Vn__*.sql` that reverses the change). Rolling the app back leaves
+  the schema ahead of the code → it will fail fast; revert the schema first using the hand-written
+  break-glass down-scripts in `src/main/resources/db/rollback/` (which Flyway does **not** scan), run
+  manually. See `db/rollback/README.md`.
 
 ## 7. Config & profiles
 
 - `application.yml` — base: JWT secrets + TTLs (env), `ddl-auto:validate`, Flyway on.
-- `application-local.yml` — dev-only JWT fallback secrets, `ddl-auto:update`, Flyway off, `access-ttl:1m`.
+- `application-local.yml` — dev-only JWT fallback secrets, `ddl-auto:validate`, Flyway on
+  (was `ddl-auto:update` + Flyway off), `access-ttl:1m`.
 - `application-dev.yml` — datasource + OAuth2/Auth0 registration (from `.env`).
 - `application-test.yml` — static test secrets; excludes DataSource / JPA / Flyway autoconfig.
 - **Env vars:** `JWT_ACCESS_SECRET`, `JWT_CREDENTIAL_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`,
@@ -133,21 +152,38 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
   it yet → the id is backend-generated today. (client task)
 - **Distributed token blacklist** (G11 persistence): in-memory `Map` is instance-local; move to a shared
   store (Redis/DB) for horizontal scaling.
-- **Role seeding** (G8, in-progress): seed `roles` via a Flyway migration now that Flyway is wired.
 - **State-mutating GET endpoints** (G13): `GET /api/users/roles` and `/without-role` perform writes —
   should be `POST`/`PATCH`.
 - **WebSocket auth** (G7, deprioritized): `/ws`, `/app`, `/topic` are `permitAll`, no STOMP auth.
+- **Auth0 OIDC discovery couples startup to Auth0 (deployment resilience):** the OAuth2 `issuer-uri`
+  makes Spring eagerly fetch `/.well-known/openid-configuration` at boot; if Auth0 is unreachable the app
+  **fails fast** (`ResourceAccessException: Connection reset`). In K8s this means `CrashLoopBackOff`
+  (self-heals when Auth0 recovers) and a **stalled rollout** (`ProgressDeadlineExceeded`; old pods keep
+  serving), or an outage on a cold/first deploy. **Fix:** configure **explicit provider endpoints**
+  (`authorization-uri` / `token-uri` / `jwk-set-uri` / `user-info-uri`) instead of `issuer-uri` so the
+  `.well-known` call is skipped at boot (JWKS loads lazily) — the pattern `application-test.yml` already
+  uses; extend to dev/prod and drop the redundant `okta.oauth2.issuer`. Add K8s `startupProbe`/
+  `readinessProbe` on `/actuator/health` as complementary hardening. (Raised 2026-08-18.)
 - **Flyway `V1` baseline:** regenerate from a real `mysqldump` before a fresh-DB provision.
-- **OpenAPI contract-first** (parked): current API models are code-first/loose; revisit if a typed client
-  contract is needed (would also formalise the `X-Correlation-Id` header).
+- **OpenAPI contract-first** (✅ shipped 2026-08-18): the API is now generated from
+  `src/main/resources/openapi/openapi.yaml` — controllers implement the generated interfaces, responses are
+  flat typed DTOs (envelope dropped), auth is `Authorization: Bearer`, and `X-Correlation-Id` is formalised
+  in the contract. S-1/S-2/S-3 baked in. Codegen runs on every build path. Client aligned in lockstep.
 
 **Client (Angular repo)**
 - Send `X-Correlation-Id` per request; proactive token-expiry handling (G6); `uId`-in-localStorage
   hygiene (G9); ensure auth headers on all calls (G2).
+- **Register form omits `fullName` (deferred):** the OpenAPI `RegisterRequest` requires `email` + `fullName`
+  + `password`, but the client's register modal only sends `{email, password, dob}`, so username/password
+  registration 400s on the missing `fullName`. Add a full-name field to the register modal + `SignUp`
+  payload. (SSO login, refresh, and the user-list already align to the flat contract — verified live
+  2026-08-18. Raised during OpenAPI manual E2E.)
 
 **Testing / cosmetic**
 - **Audit DB-write path** is not exercised by the IT suite (`test` mocks JPA); verified live instead — add
-  a real-DB/`@DataJpaTest` IT if you want it covered automatically.
+  a real-DB/`@DataJpaTest` IT if you want it covered automatically. A reusable Testcontainers real-DB IT
+  pattern now exists (`SchemaMigrationValidationIT` — `@DataJpaTest` + real Flyway + `validate` on a
+  throwaway MySQL) — a candidate to later close this gap.
 - Optional: role-assign **404 hide-existence** path IT (happy + forbidden are covered).
 - Cosmetic: em-dashes remain in **comments** (never reach the console) — harmless.
 

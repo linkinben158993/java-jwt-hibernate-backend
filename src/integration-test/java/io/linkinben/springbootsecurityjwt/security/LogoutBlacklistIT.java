@@ -75,18 +75,18 @@ class LogoutBlacklistIT {
                         .content("{\"username\":\"" + email + "\",\"password\":\"pw\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        String token = objectMapper.readTree(body).path("response").path("data").path("accessToken").asText();
+        String token = objectMapper.readTree(body).path("accessToken").asText();
 
         // 2. Token is accepted before logout.
-        mockMvc.perform(get("/api/users/me").header("access_token", "Bearer " + token))
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
         // 3. Logout blacklists the token.
-        mockMvc.perform(post("/api/auth/logout").header("access_token", "Bearer " + token))
+        mockMvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
         // 4. The same token is now rejected on a protected endpoint.
-        mockMvc.perform(get("/api/users/me").header("access_token", "Bearer " + token))
+        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
     }
 }

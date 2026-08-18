@@ -18,6 +18,7 @@ import jakarta.validation.constraints.NotEmpty;
 
 import org.hibernate.annotations.DynamicUpdate;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity(name = "users")
@@ -44,8 +45,12 @@ public class Users extends GenericEntities<String> {
 	@Column(name = "dob")
 	private Date dob;
 
+	// Never serialize the password hash into any API response (S-2): the entity is returned directly by
+	// some endpoints (e.g. GET /api/users). The app never binds Users from request JSON (RegisterRequest
+	// is used for input), so ignoring it in both directions is safe.
 	@NotBlank
 	@Column(length = 100)
+	@JsonIgnore
 	private String password;
 
 	@ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

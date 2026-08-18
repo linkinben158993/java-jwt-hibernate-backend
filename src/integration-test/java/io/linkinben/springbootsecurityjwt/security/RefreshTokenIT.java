@@ -57,9 +57,9 @@ class RefreshTokenIT {
         when(jwtService.genToken(any(), any())).thenReturn("new.access.token");
 
         mockMvc.perform(post("/api/auth/token/refresh")
-                        .header("refresh_token", "Bearer valid.refresh.jwt"))
+                        .header("Authorization","Bearer valid.refresh.jwt"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.accessToken").value("new.access.token"));
+                .andExpect(jsonPath("$.accessToken").value("new.access.token"));
     }
 
     @Test
@@ -72,9 +72,9 @@ class RefreshTokenIT {
 
         // The reissued access token must keep loginMethod=oauth2 so logout can still tear down Auth0.
         mockMvc.perform(post("/api/auth/token/refresh")
-                        .header("refresh_token", "Bearer oauth2.refresh.jwt"))
+                        .header("Authorization","Bearer oauth2.refresh.jwt"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.response.data.accessToken").value("new.oauth2.access"));
+                .andExpect(jsonPath("$.accessToken").value("new.oauth2.access"));
     }
 
     @Test
@@ -84,7 +84,7 @@ class RefreshTokenIT {
                 .thenThrow(new ExpiredJwtException(null, null, "expired"));
 
         mockMvc.perform(post("/api/auth/token/refresh")
-                        .header("refresh_token", "Bearer expired.refresh.jwt"))
+                        .header("Authorization","Bearer expired.refresh.jwt"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -95,7 +95,7 @@ class RefreshTokenIT {
                 .thenThrow(new MalformedJwtException("bad"));
 
         mockMvc.perform(post("/api/auth/token/refresh")
-                        .header("refresh_token", "Bearer not-a-jwt"))
+                        .header("Authorization","Bearer not-a-jwt"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -104,7 +104,7 @@ class RefreshTokenIT {
         when(tokenBlacklistService.isBlacklisted("revoked.jwt")).thenReturn(true);
 
         mockMvc.perform(post("/api/auth/token/refresh")
-                        .header("refresh_token", "Bearer revoked.jwt"))
+                        .header("Authorization","Bearer revoked.jwt"))
                 .andExpect(status().isUnauthorized());
     }
 
