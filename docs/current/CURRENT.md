@@ -155,6 +155,15 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
 - **State-mutating GET endpoints** (G13): `GET /api/users/roles` and `/without-role` perform writes —
   should be `POST`/`PATCH`.
 - **WebSocket auth** (G7, deprioritized): `/ws`, `/app`, `/topic` are `permitAll`, no STOMP auth.
+- **Auth0 OIDC discovery couples startup to Auth0 (deployment resilience):** the OAuth2 `issuer-uri`
+  makes Spring eagerly fetch `/.well-known/openid-configuration` at boot; if Auth0 is unreachable the app
+  **fails fast** (`ResourceAccessException: Connection reset`). In K8s this means `CrashLoopBackOff`
+  (self-heals when Auth0 recovers) and a **stalled rollout** (`ProgressDeadlineExceeded`; old pods keep
+  serving), or an outage on a cold/first deploy. **Fix:** configure **explicit provider endpoints**
+  (`authorization-uri` / `token-uri` / `jwk-set-uri` / `user-info-uri`) instead of `issuer-uri` so the
+  `.well-known` call is skipped at boot (JWKS loads lazily) — the pattern `application-test.yml` already
+  uses; extend to dev/prod and drop the redundant `okta.oauth2.issuer`. Add K8s `startupProbe`/
+  `readinessProbe` on `/actuator/health` as complementary hardening. (Raised 2026-08-18.)
 - **Flyway `V1` baseline:** regenerate from a real `mysqldump` before a fresh-DB provision.
 - **OpenAPI contract-first** (parked): current API models are code-first/loose; revisit if a typed client
   contract is needed (would also formalise the `X-Correlation-Id` header).
