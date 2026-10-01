@@ -1,27 +1,43 @@
 package io.linkinben.perf;
 
 import com.linkinben.gatling.AbstractAsyncScenario;
+import com.linkinben.gatling.integrations.base.BaseSender;
+import com.linkinben.gatling.integrations.http.HttpSender;
 import com.linkinben.gatling.simulation.BaseSimulation;
+import io.linkinben.perf.scenarios.LoginHttpScenario;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * Gatling simulation for the jwt-security backend, consuming the gatling-java-learning framework.
  *
- * <p>Scenarios are wired in later steps: HTTP→response (login) in step 06, HTTP→DB (register) in step 07.
- * For now the scenario map is empty so the scaffold compiles; the actual traffic run is the step-08
- * acceptance round.
+ * <p>Scenario names here MUST match the entries in {@code default-test-plan.yaml}. HTTP→DB
+ * ({@code RegisterHttpDbScenario}) is added in step 07. The traffic run is the step-08 acceptance round.
  */
 @Slf4j
 public class PerfSimulation extends BaseSimulation {
 
+    private final HttpSender httpSender;
+    private final String baseUrl;
+
     public PerfSimulation() {
+        this.baseUrl = System.getenv().getOrDefault("HTTP_BASE_URL", "http://localhost:4201");
+        this.httpSender = new HttpSender();
         setUp(getScenario());
     }
 
     @Override
+    protected @NonNull List<BaseSender> getSenders() {
+        return List.of(httpSender);
+    }
+
+    @Override
     protected Map<String, AbstractAsyncScenario> getScenarioMap() {
-        return Map.of();
+        return Map.of(
+                "LoginHttpScenario", new LoginHttpScenario(config, httpSender, baseUrl)
+        );
     }
 }
