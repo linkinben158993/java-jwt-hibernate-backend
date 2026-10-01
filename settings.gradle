@@ -1,1 +1,5 @@
 rootProject.name = 'springboot-security-jwt'
+
+// Additive: the Gatling performance module (consumes the published gatling-java-learning framework).
+// The main service code (src/main/**) is untouched — this is scaffolding only.
+include 'performance'

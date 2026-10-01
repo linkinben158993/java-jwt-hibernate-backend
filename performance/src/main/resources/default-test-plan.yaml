@@ -1,0 +1,9 @@
+plans:
+  - name: default
+    totalTps: 2
+    scenarios:
+      - name: LoginHttpScenario        # HTTP -> response  (POST /api/auth/login)
+        tps: 1
+      - name: RegisterHttpDbScenario   # HTTP -> DB         (POST /api/users -> users row)
+        tps: 1
+# No Kafka scenario: the jwt-security backend has no Kafka today (Phase 2 / N7 future stretch).
