@@ -147,6 +147,14 @@ TracingFilter (correlationId → MDC, HIGHEST_PRECEDENCE)
 
 ## 9. CURRENT follow-ups / roadmap
 
+**Performance testing (new — `performance/` module)**
+- A Gatling `performance` subproject (additive; no service-code change) load-tests the API via the
+  `gatling-java-learning` framework (HTTP→response login + HTTP→DB register-verify). Run:
+  `./gradlew :performance:runLoadTest` against a running backend — see `performance/README.md`.
+- **Follow-ups:** Gatling pinned at **3.10.5** (3.14.3's `ChainableAction` API change — migration loop-back);
+  HTTP→DB JDBC verify couples to the `users.email` column (a migration could break it); **Phase 2** — a
+  simple kafka-to-kafka flow in the backend + scenario, local k8s deployment, perf-module profiles.
+
 **Backend**
 - **Front-end correlation id:** ready to honour `X-Correlation-Id`; the Angular interceptor doesn't send
   it yet → the id is backend-generated today. (client task)
