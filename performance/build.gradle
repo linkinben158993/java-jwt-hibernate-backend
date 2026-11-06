@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+}
+
+group = 'io.linkinben.perf'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenLocal()   // resolves the published gatling-java-learning framework
+    mavenCentral()
+    maven { url "https://packages.confluent.io/maven" }
+}
+
+// Java 26 so this module can read the framework jar (compiled to Java 26 bytecode) and run on this JVM.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+// Deviation from D8: the io.gatling.gradle plugin (3.10.5.x) predates Gradle 9.5.1 and risks compat issues,
+// so this module uses a plain JavaExec runner invoking io.gatling.app.Gatling directly (self-sufficient).
+// The plugin can be re-added later if the project pins a compatible Gradle.
+tasks.register('runLoadTest', JavaExec) {
+    description = 'Run the Gatling performance simulation against a running backend (:4201).'
+    group = 'verification'
+    mainClass.set('io.gatling.app.Gatling')
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['--add-opens', 'java.base/java.lang=ALL-UNNAMED']
+    args = ['-s', 'io.linkinben.perf.PerfSimulation',
+            '-rf', layout.buildDirectory.dir('reports/gatling').get().asFile.toString()]
+    // HTTP/DB targets come from env vars (N5 local source): HTTP_BASE_URL, DB_URL, DB_USER, DB_PASSWORD.
+    environment System.getenv()
+}
+
+dependencies {
+    // The framework (N4 fallback: Gatling 3.10.5 — the perf module MUST match to avoid a ChainableAction
+    // binary mismatch at runtime).
+    implementation 'com.linkinben.gatling:gatling-java-learning:1.0.0-SNAPSHOT'
+
+    implementation 'io.gatling:gatling-app:3.10.5'
+    implementation 'io.gatling:gatling-core-java:3.10.5'
+    implementation 'io.gatling:gatling-http-java:3.10.5'
+    implementation 'io.gatling.highcharts:gatling-charts-highcharts:3.10.5'
+
+    implementation 'org.asynchttpclient:async-http-client:3.0.1'
+    implementation 'com.zaxxer:HikariCP:3.4.0'
+    runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.38'
+    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+}
